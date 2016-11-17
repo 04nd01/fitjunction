@@ -1,0 +1,11 @@
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Private files
+config.js
+test.js
+token.json
+node_modules/
+sample files/

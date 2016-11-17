@@ -1,0 +1,32 @@
+{
+  "name": "fitjunction",
+  "version": "1.0.0",
+  "description": "Pulls activity data from fitbit and stores it in a MySQL database.",
+  "main": "main.js",
+  "dependencies": {
+    "moment": "^2.15.2",
+    "mysql": "^2.11.1",
+    "request-debug": "^0.2.0",
+    "request": "^2.76.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/04nd01/fitjunction.git"
+  },
+  "keywords": [
+    "fitbit",
+    "quantified",
+    "self",
+    "fitness"
+  ],
+  "author": "Andi Töpfer",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/04nd01/fitjunction/issues"
+  },
+  "homepage": "https://github.com/04nd01/fitjunction#readme"
+}
