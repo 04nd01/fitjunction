@@ -45,7 +45,7 @@ function connect() {
           code: query['code']
         }
       }
-      request(options, function (err, res, body) {
+      request(options, function(err, res, body) {
         if (!err && res.statusCode == 200) {
           let data = JSON.parse(body);
           accessToken = data.access_token;
@@ -67,7 +67,7 @@ function connect() {
 }
 
 function tokenRefresh() {
-  return new Promise(function (fulfill, reject){
+  return new Promise(function(fulfill, reject){
     var buffer = 300;  // Subtract 5 minutes so the token will be renewed if it's about to expire soon
     if (typeof accessToken !== 'undefined' && Date.now()>(Number(accessTokenExpiry)-buffer)) {
       var options = {
@@ -83,7 +83,7 @@ function tokenRefresh() {
         }
       }
 
-      request(options, function (err, res, body) {
+      request(options, function(err, res, body) {
         if (!err && res.statusCode == 200) {
           let data = JSON.parse(body);
           accessToken = data.access_token;
@@ -112,13 +112,13 @@ function updateTokenStorage() {
     'refreshToken': refreshToken,
     'userId': userId
   })
-  fs.writeFile('./token.json', content, function (err) {
+  fs.writeFile('./token.json', content, function(err) {
     if (err) throw err;
   });
 }
 
 function apiRequest(resourcePath) {
-  return new Promise(function (fulfill, reject){
+  return new Promise(function(fulfill, reject){
     console.log('Fetching: ' + config.FITBIT_RESOURCE_BASE_URL + 'user/-/' + resourcePath);
     var options = {
       url: config.FITBIT_RESOURCE_BASE_URL + 'user/-/' + resourcePath,
@@ -127,8 +127,8 @@ function apiRequest(resourcePath) {
         'Authorization': 'Bearer ' + accessToken
       }
     }
-    request(options, function (err, res, body) {
-      if (!err && res.statusCode == 200) fulfill(body);
+    request(options, function(err, res, body) {
+      if (!err && res.statusCode == 200) fulfill(JSON.parse(body));
       else reject({'Error': err, 'Statuscode': res.statusCode});
     });
   });

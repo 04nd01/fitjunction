@@ -14,7 +14,7 @@ var completeness;
 
 function queryPromised() {
   let firstLevelArgs = arguments;
-  return new Promise(function (fulfill, reject){
+  return new Promise(function(fulfill, reject){
     pool.getConnection(function(err, connection) {
       if (err) { reject(err); return; }
       connection.query(...firstLevelArgs, function(err, rows, fields) {
@@ -29,7 +29,7 @@ function queryPromised() {
 fitbitConnector.tokenRefresh()
 .then(() => queryPromised('SELECT table_name, time FROM completeness')) // queryAsync will run asynchronous to the promise chain if called directly with static arguments
 .then(function(rows) {
-  return new Promise(function (fulfill, reject){
+  return new Promise(function(fulfill, reject){
     completeness = {};
     for(var i=0;i<rows.length;i++)
     {
@@ -68,24 +68,41 @@ fitbitConnector.tokenRefresh()
     .catch(function(err) { console.log(err); });
     */
 
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    // look for nested promises and make sure only the deepest nested promise fulfills to prevent premature continuation of the promise chains
-    //!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // ACTIVITY INTRADAY
+    let getActivities = [
+      fitbitConnector.apiRequest('activities/steps/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
+      fitbitConnector.apiRequest('activities/distance/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
+      fitbitConnector.apiRequest('activities/floors/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
+      fitbitConnector.apiRequest('activities/elevation/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
+      fitbitConnector.apiRequest('activities/calories/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json')
+    ];
 
-    /* incomplete
-    ACTIVITY
-    fitbitConnector.apiRequest('sleep/date/' + completeness.sleep.startDay.format('YYYY-MM-DD') + '/1d/1sec.json')
+    Promise.all(getActivities)
+    .then(function(result) {
+      return new Promise(function(fulfill, reject){
+        fulfill({
+          'steps': result[0]['activities-steps-intraday']['dataset'],
+          'distance': result[1]['activities-distance-intraday']['dataset'],
+          'floors': result[2]['activities-floors-intraday']['dataset'],
+          'elevation': result[3]['activities-elevation-intraday']['dataset'],
+          'calories': result[4]['activities-calories-intraday']['dataset']
+        });
+      });
+    })
     .then(fitbitDataWriter)
     .catch(function(err) { console.log(err); });
 
-    let activitiesStepsPromise= fitbitConnector.apiRequest('ACTIVITIES--------' + completeness.ACTIVITIES-------.startDay.format('YYYY-MM-DD') + '.json')
 
-
+    /*
+    // ACTIVITY DAILY
     var activities = require('./beispieldaten/_activities.json');
-    var activities_calories = require('./beispieldaten/_activities_calories.json');
-    var activities_steps = require('./beispieldaten/_activities_steps.json');
-    var activities_floors = require('./beispieldaten/_activities_floors.json');
-    var activities_elevation = require('./beispieldaten/_activities_elevation.json');
+    */
+
+    /*
+    // SLEEP (incomplete)
+    fitbitConnector.apiRequest('sleep/date/' + completeness.sleep.startDay.format('YYYY-MM-DD') + '/1d/1sec.json')
+    .then(fitbitDataWriter)
+    .catch(function(err) { console.log(err); });
 
     */
 
@@ -94,9 +111,8 @@ fitbitConnector.tokenRefresh()
 })
 .catch(function(err) { console.log(err); });
 
-function fitbitDataWriter(payload) {
-  return new Promise(function (fulfill, reject){
-    let result = JSON.parse(payload);
+function fitbitDataWriter(result) {
+  return new Promise(function(fulfill, reject){
     switch(Object.keys(result)[0]) {
       case 'fat':
         let fat = result['fat'];
@@ -178,8 +194,35 @@ function fitbitDataWriter(payload) {
         }
         fulfill();
         break;
-      case 'activities':
+      case 'steps':
+        let rows = [];
+        let currentEntry, lastKey;
+        Object.keys(result.steps).forEach(function(key) {
+          currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[key]['time']);
+          if (currentEntry > completeness.activity_intraday.startTime && result.steps[key]['value'] > 0)
+          {
+            lastKey = key;
+            rows.push('("' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + '", "'
+            + result.steps[key]['value'] + '", "'
+            + result.distance[key]['value'] + '", "'
+            + result.floors[key]['value'] + '", "'
+            + result.elevation[key]['value'] + '", "'
+            + result.calories[key]['level'] + '")');
+          }
+        });
 
+        // reset currententry to the minute before the last row and remove last row. This is to make sure only complete minutes are written to the db
+        currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[lastKey]['time']);
+        currentEntry moment(currentEntry).subtract(1, 'minute');
+        rows.splice(-1,1);
+
+        let allRows = rows.join(', ');
+        console.log(allRows);
+
+        queryPromised('INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows).catch(function(err) { console.log(err); return; });
+
+        if (completeness.activity_intraday.startDay < completeness.activity_intraday.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "activity_intraday"', [completeness.activity_intraday.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
+        else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "activity_intraday"', [currentEntry.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });  // as intraday hr values are in ascending order the last inserted entry will be the newest one
         fulfill();
         break;
       case 'sleep':
