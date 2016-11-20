@@ -68,6 +68,7 @@ fitbitConnector.tokenRefresh()
     .catch(function(err) { console.log(err); });
     */
 
+    /*
     // ACTIVITY INTRADAY
     let getActivities = [
       fitbitConnector.apiRequest('activities/steps/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
@@ -91,25 +92,29 @@ fitbitConnector.tokenRefresh()
     })
     .then(fitbitDataWriter)
     .catch(function(err) { console.log(err); });
-
-
-    /*
-    // ACTIVITY DAILY
-    var activities = require('./beispieldaten/_activities.json');
     */
 
-    /*
     // SLEEP (incomplete)
-    fitbitConnector.apiRequest('sleep/date/' + completeness.sleep.startDay.format('YYYY-MM-DD') + '/1d/1sec.json')
+    fitbitConnector.apiRequest('sleep/date/' + completeness.sleep.startDay.format('YYYY-MM-DD') + '.json')
     .then(fitbitDataWriter)
     .catch(function(err) { console.log(err); });
 
-    */
+
+
 
     fulfill();
   });
 })
 .catch(function(err) { console.log(err); });
+
+function updateCompleteness(tableName) {
+  console.log('No Body Fat data for ' + completeness.body_fat.startDay.format('YYYY-MM-DD') + ', updating completeness table');
+  if (completeness.body_fat.startDay < completeness.body_fat.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
+  else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.currentDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
+
+ // WIP
+
+};
 
 function fitbitDataWriter(result) {
   return new Promise(function(fulfill, reject){
@@ -213,11 +218,9 @@ function fitbitDataWriter(result) {
 
         // reset currententry to the minute before the last row and remove last row. This is to make sure only complete minutes are written to the db
         currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[lastKey]['time']);
-        currentEntry moment(currentEntry).subtract(1, 'minute');
+        currentEntry = moment(currentEntry).subtract(30, 'seconds');
         rows.splice(-1,1);
-
         let allRows = rows.join(', ');
-        console.log(allRows);
 
         queryPromised('INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows).catch(function(err) { console.log(err); return; });
 
@@ -226,12 +229,20 @@ function fitbitDataWriter(result) {
         fulfill();
         break;
       case 'sleep':
+        let sleep = result['sleep'];
+        if (Object.keys(sleep).length == 0) {
+          console.log('No Sleep data for ' + completeness.body_fat.startDay.format('YYYY-MM-DD') + ', updating completeness table');
+          if (completeness.body_fat.startDay < completeness.body_fat.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
+          else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.currentDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
+        }
+        // before continuing with this part, create a function to update the completeness table which can be used for all cases
+
+        // forEach minuteData
 
         fulfill();
         break;
       default:
-        console.log("Can't recognize data type of API result.");
-        fulfill();
+        reject("Can't recognize data type of API result.");
     }
   });
 };
