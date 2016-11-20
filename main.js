@@ -47,10 +47,12 @@ fitbitConnector.tokenRefresh()
 
     // Single Data types commented for testing
 
+    /*
     // BODY FAT
     fitbitConnector.apiRequest('body/log/fat/date/' + completeness.body_fat.startDay.format('YYYY-MM-DD') + '.json')
     .then(fitbitDataWriter)
     .catch(function(err) { console.log(err); });
+    */
 
     /*
     // WEIGHT
@@ -213,9 +215,43 @@ function fitbitDataWriter(result) {
       case 'sleep':
         let sleep = result['sleep'];
         if (Object.keys(sleep).length == 0) updateCompleteness('sleep');
+        else {
+          let currentEntry;
+          Object.keys(fat).forEach(function(key) {
+            let isMainSleep, startTime, endTime;
+            if (sleep[key]['isMainSleep'] == 'true') isMainSleep = 1;
+            else isMainSleep = 0;
+            startTime = moment(sleep[key]['startTime']);
+            currentEntry = moment(sleep[key]['startTime']);
+            endTime = moment(sleep[key]['startTime']);
+            moment(endTime).add(sleep[key]['timeInBed'], 'minutes');
+            queryPromised('INSERT INTO sleep (is_main_sleep, efficiency, start_time, end_time, minutes_to_sleep, minutes_awake, minutes_after_wake, awake_count, awake_duration, restless_count, restless_duration, minutes_in_bed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',[
+              isMainSleep,
+              sleep[key]['efficiency'],
+              startTime,
+              endTime,
+              sleep[key]['minutesToFallAsleep'],
+              sleep[key]['minutesAwake'],
+              sleep[key]['minutesAfterWakeup'],
+              sleep[key]['awakeCount'],
+              sleep[key]['awakeDuration'],
+              sleep[key]['restlessCount'],
+              sleep[key]['restlessDuration'],
+              sleep[key]['timeInBed']
+            ])
+            .then(function(result) {
+              console.log(result.insertId);
+              let rows = [];
 
-        // forEach minuteData
+              // loop through minutedata
 
+              // insert
+            })
+            .catch(function(err) { reject(err); return; });
+
+          });
+          updateCompleteness('sleep', currentEntry);
+        }
         fulfill();
         break;
       default:
