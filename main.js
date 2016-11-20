@@ -47,12 +47,10 @@ fitbitConnector.tokenRefresh()
 
     // Single Data types commented for testing
 
-    /*
     // BODY FAT
     fitbitConnector.apiRequest('body/log/fat/date/' + completeness.body_fat.startDay.format('YYYY-MM-DD') + '.json')
     .then(fitbitDataWriter)
     .catch(function(err) { console.log(err); });
-    */
 
     /*
     // WEIGHT
@@ -94,11 +92,12 @@ fitbitConnector.tokenRefresh()
     .catch(function(err) { console.log(err); });
     */
 
+/*
     // SLEEP (incomplete)
     fitbitConnector.apiRequest('sleep/date/' + completeness.sleep.startDay.format('YYYY-MM-DD') + '.json')
     .then(fitbitDataWriter)
     .catch(function(err) { console.log(err); });
-
+*/
 
 
 
@@ -107,13 +106,14 @@ fitbitConnector.tokenRefresh()
 })
 .catch(function(err) { console.log(err); });
 
-function updateCompleteness(tableName) {
-  console.log('No Body Fat data for ' + completeness.body_fat.startDay.format('YYYY-MM-DD') + ', updating completeness table');
-  if (completeness.body_fat.startDay < completeness.body_fat.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-  else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.currentDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-
- // WIP
-
+function updateCompleteness(tableName, currentEntry) {
+  if (currentEntry == null) console.log('No "' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ', updating completeness table');
+  if (completeness[tableName].startDay < completeness[tableName].currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].nextDay.format('YYYY-MM-DD'), tableName]).catch(function(err) { reject(err); return; });
+  else
+  {
+    if (currentEntry == null) queryPromised('UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].currentDay.format('YYYY-MM-DD'), tableName]).catch(function(err) { reject(err); return; });
+    else queryPromised('UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry, tableName]).catch(function(err) { reject(err); return; });
+  }
 };
 
 function fitbitDataWriter(result) {
@@ -121,11 +121,7 @@ function fitbitDataWriter(result) {
     switch(Object.keys(result)[0]) {
       case 'fat':
         let fat = result['fat'];
-        if (Object.keys(fat).length == 0) {
-          console.log('No Body Fat data for ' + completeness.body_fat.startDay.format('YYYY-MM-DD') + ', updating completeness table');
-          if (completeness.body_fat.startDay < completeness.body_fat.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-          else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.currentDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-        }
+        if (Object.keys(fat).length == 0) updateCompleteness('body_fat');
         else {
           let rows = [];
           let newestEntry = moment(completeness.body_fat.startTime);
@@ -140,18 +136,13 @@ function fitbitDataWriter(result) {
           });
           let allRows = rows.join(', ');
           queryPromised('INSERT INTO body_fat (time, fat) VALUES ' + allRows).catch(function(err) { reject(err); return; });
-          if (completeness.body_fat.startDay < completeness.body_fat.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-          else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [newestEntry.format('YYYY-MM-DD HH:mm:ss')]).catch(function(err) { reject(err); return; });
+          updateCompleteness('body_fat', newestEntry);
         }
         fulfill();
         break;
       case 'weight':
         let weight = result['weight'];
-        if (Object.keys(weight).length == 0) {
-          console.log('No Weight data for ' + completeness.weight.startDay.format('YYYY-MM-DD') + ', updating completeness table');
-          if (completeness.weight.startDay < completeness.weight.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "weight"', [completeness.weight.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-          else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "weight"', [completeness.weight.currentDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-        }
+        if (Object.keys(weight).length == 0) updateCompleteness('weight');
         else {
           let rows = [];
           let newestEntry = moment(completeness.weight.startTime);
@@ -166,19 +157,14 @@ function fitbitDataWriter(result) {
           });
           let allRows = rows.join(', ');
           queryPromised('INSERT INTO weight (time, weight, bmi) VALUES ' + allRows).catch(function(err) { reject(err); return; });
-          if (completeness.weight.startDay < completeness.weight.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "weight"', [completeness.weight.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-          else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "weight"', [newestEntry.format('YYYY-MM-DD HH:mm:ss')]).catch(function(err) { reject(err); return; });
+          updateCompleteness('weight', newestEntry);
         }
         fulfill();
         break;
       case 'activities-heart':
         let restingHeartRate = result['activities-heart'][0]['value']['restingHeartRate'];  // value might still be undefined even if there's Intraday Data
         let heartRateIntraday = result['activities-heart-intraday']['dataset'];
-        if (Object.keys(heartRateIntraday).length == 0) {
-          console.log('No Heart Rate data for ' + completeness.hr_intraday.startDay.format('YYYY-MM-DD') + ', updating completeness table');
-          if (completeness.hr_intraday.startDay < completeness.hr_intraday.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "hr_intraday"', [completeness.hr_intraday.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-          else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "hr_intraday"', [completeness.hr_intraday.currentDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-        }
+        if (Object.keys(heartRateIntraday).length == 0) updateCompleteness('hr_intraday');
         else {
           if(restingHeartRate) queryPromised('INSERT INTO hr_resting (date, hr) VALUES (?, ?) ON DUPLICATE KEY UPDATE hr = ?', [completeness.hr_intraday.startDay.format('YYYY-MM-DD'), restingHeartRate, restingHeartRate]).catch(function(err) { reject(err); return; });
           let rows = [];
@@ -193,9 +179,7 @@ function fitbitDataWriter(result) {
           console.log(rows.length);
           let allRows = rows.join(', ');
           queryPromised('INSERT INTO hr_intraday (time, hr) VALUES ' + allRows).catch(function(err) { console.log(err); return; });
-
-          if (completeness.hr_intraday.startDay < completeness.hr_intraday.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "hr_intraday"', [completeness.hr_intraday.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-          else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "hr_intraday"', [currentEntry.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });  // as intraday hr values are in ascending order the last inserted entry will be the newest one
+          updateCompleteness('weight', currentEntry);
         }
         fulfill();
         break;
@@ -223,19 +207,12 @@ function fitbitDataWriter(result) {
         let allRows = rows.join(', ');
 
         queryPromised('INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows).catch(function(err) { console.log(err); return; });
-
-        if (completeness.activity_intraday.startDay < completeness.activity_intraday.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "activity_intraday"', [completeness.activity_intraday.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-        else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "activity_intraday"', [currentEntry.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });  // as intraday hr values are in ascending order the last inserted entry will be the newest one
+        updateCompleteness('activity_intraday', currentEntry);
         fulfill();
         break;
       case 'sleep':
         let sleep = result['sleep'];
-        if (Object.keys(sleep).length == 0) {
-          console.log('No Sleep data for ' + completeness.body_fat.startDay.format('YYYY-MM-DD') + ', updating completeness table');
-          if (completeness.body_fat.startDay < completeness.body_fat.currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.nextDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-          else queryPromised('UPDATE completeness SET time = ? WHERE table_name = "body_fat"', [completeness.body_fat.currentDay.format('YYYY-MM-DD')]).catch(function(err) { reject(err); return; });
-        }
-        // before continuing with this part, create a function to update the completeness table which can be used for all cases
+        if (Object.keys(sleep).length == 0) updateCompleteness('sleep');
 
         // forEach minuteData
 
