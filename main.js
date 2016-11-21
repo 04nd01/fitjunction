@@ -14,12 +14,13 @@ var completeness;
 
 function queryPromised() {
   let firstLevelArgs = arguments;
+  console.log('REQUEST: ' + JSON.stringify(firstLevelArgs));
   return new Promise(function(fulfill, reject){
     pool.getConnection(function(err, connection) {
       if (err) { reject(err); return; }
       connection.query(...firstLevelArgs, function(err, rows, fields) {
         if (err) { reject(err); return; }
-        //DEBUG console.log('REQUEST: ' + JSON.stringify(firstLevelArgs) + '\nRESULT: ' + JSON.stringify(rows));
+        console.log('RESULT: ' + JSON.stringify(rows));
         fulfill(rows);
       });
     });
@@ -94,12 +95,10 @@ fitbitConnector.tokenRefresh()
     .catch(function(err) { console.log(err); });
     */
 
-/*
     // SLEEP (incomplete)
     fitbitConnector.apiRequest('sleep/date/' + completeness.sleep.startDay.format('YYYY-MM-DD') + '.json')
     .then(fitbitDataWriter)
     .catch(function(err) { console.log(err); });
-*/
 
 
 
@@ -114,7 +113,7 @@ function updateCompleteness(tableName, currentEntry) {
   else
   {
     if (currentEntry == null) queryPromised('UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].currentDay.format('YYYY-MM-DD'), tableName]).catch(function(err) { reject(err); return; });
-    else queryPromised('UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry, tableName]).catch(function(err) { reject(err); return; });
+    else queryPromised('UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry.format('YYYY-MM-DD HH:mm:ss'), tableName]).catch(function(err) { reject(err); return; });
   }
 };
 
@@ -180,7 +179,7 @@ function fitbitDataWriter(result) {
           });
           console.log(rows.length);
           let allRows = rows.join(', ');
-          queryPromised('INSERT INTO hr_intraday (time, hr) VALUES ' + allRows).catch(function(err) { console.log(err); return; });
+          queryPromised('INSERT INTO hr_intraday (time, hr) VALUES ' + allRows).catch(function(err) { reject(err); return; });
           updateCompleteness('weight', currentEntry);
         }
         fulfill();
@@ -208,7 +207,7 @@ function fitbitDataWriter(result) {
         rows.splice(-1,1);
         let allRows = rows.join(', ');
 
-        queryPromised('INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows).catch(function(err) { console.log(err); return; });
+        queryPromised('INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows).catch(function(err) { reject(err); return; });
         updateCompleteness('activity_intraday', currentEntry);
         fulfill();
         break;
@@ -217,40 +216,46 @@ function fitbitDataWriter(result) {
         if (Object.keys(sleep).length == 0) updateCompleteness('sleep');
         else {
           let currentEntry;
-          Object.keys(fat).forEach(function(key) {
-            let isMainSleep, startTime, endTime;
-            if (sleep[key]['isMainSleep'] == 'true') isMainSleep = 1;
-            else isMainSleep = 0;
-            startTime = moment(sleep[key]['startTime']);
+          let insertSleep = [];
+          function sleepLog(key) {
+            return new Promise(function (fulfill, reject){
+              let isMainSleep, startTime, endTime;
+              if (sleep[key]['isMainSleep'] == 'true') isMainSleep = 1;
+              else isMainSleep = 0;
+              startTime = moment(sleep[key]['startTime']);
+              endTime = moment(sleep[key]['startTime']);
+              endTime.add(sleep[key]['timeInBed'], 'minutes');
+              queryPromised('INSERT INTO sleep (is_main_sleep, efficiency, start_time, end_time, minutes_to_sleep, minutes_awake, minutes_after_wake, awake_count, awake_duration, restless_count, restless_duration, minutes_in_bed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [isMainSleep, sleep[key]['efficiency'], startTime.format('YYYY-MM-DD HH:mm:ss'), endTime.format('YYYY-MM-DD HH:mm:ss'), sleep[key]['minutesToFallAsleep'], sleep[key]['minutesAwake'], sleep[key]['minutesAfterWakeup'], sleep[key]['awakeCount'], sleep[key]['awakeDuration'], sleep[key]['restlessCount'], sleep[key]['restlessDuration'], sleep[key]['timeInBed']])
+              .then(function(result) {
+                let rows = [];
+                let minuteData = sleep[key]['minuteData'];
+                let currentMinute = moment(startTime); // incrementing from the startTime value instead of using the dateTime value from minuteData so we don't have to deal with changing from one day another
+                Object.keys(minuteData).forEach(function(sleepMinute) {
+                  rows.push('("' + currentMinute.format('YYYY-MM-DD HH:mm:ss') + '", "' + result.insertId + '", "' + minuteData[sleepMinute]['value'] + '")');
+                  currentMinute.add(1, 'minutes');
+                });
+                let allRows = rows.join(', ');
+                queryPromised('INSERT INTO sleep_by_minute (time, id_sleep, id_sleep_states) VALUES ' + allRows).catch(function(err) { reject(err); return; });
+              })
+              //.then(queryPromised)
+              .catch(function(err) { reject(err); return; });
+              fulfill();
+            });
+          };
+          Object.keys(sleep).forEach(function(key) {
             currentEntry = moment(sleep[key]['startTime']);
-            endTime = moment(sleep[key]['startTime']);
-            moment(endTime).add(sleep[key]['timeInBed'], 'minutes');
-            queryPromised('INSERT INTO sleep (is_main_sleep, efficiency, start_time, end_time, minutes_to_sleep, minutes_awake, minutes_after_wake, awake_count, awake_duration, restless_count, restless_duration, minutes_in_bed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',[
-              isMainSleep,
-              sleep[key]['efficiency'],
-              startTime,
-              endTime,
-              sleep[key]['minutesToFallAsleep'],
-              sleep[key]['minutesAwake'],
-              sleep[key]['minutesAfterWakeup'],
-              sleep[key]['awakeCount'],
-              sleep[key]['awakeDuration'],
-              sleep[key]['restlessCount'],
-              sleep[key]['restlessDuration'],
-              sleep[key]['timeInBed']
-            ])
-            .then(function(result) {
-              console.log(result.insertId);
-              let rows = [];
+            console.log('starttime: ' + completeness.sleep.startTime.format('YYYY-MM-DD HH:mm:ss'));
+            console.log('sleepstarttime: ' + currentEntry.format('YYYY-MM-DD HH:mm:ss'));
 
-              // loop through minutedata
-
-              // insert
-            })
-            .catch(function(err) { reject(err); return; });
-
+            // if the time part of startTime is 00:00:00 also accept entries from the day before
+            if (currentEntry > completeness.sleep.startTime) {
+              insertSleep.push(sleepLog(key));
+            }
           });
-          updateCompleteness('sleep', currentEntry);
+          Promise.all(insertSleep)
+          .catch(function(err) { reject(err); return; });
+
+          updateCompleteness('sleep', moment(sleep[Object.keys(sleep).slice(-1)[0]]['startTime']));
         }
         fulfill();
         break;
