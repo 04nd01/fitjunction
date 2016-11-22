@@ -27,9 +27,8 @@ catch (e) {
 function connect() {
   var requestListener = function(req, response) {
     var query = url.parse(req.url, true)['query'];
-    if(query['mode'] == 'auth') {
-      response.writeHead(307, {'Location': config.FITBIT_OAUTH_URL + '?response_type=code&client_id=' + config.FITBIT_CLIENT_ID + '&redirect_uri=' + config.FITBIT_REDIRECT_URL + '&scope=' + config.FITBIT_SCOPE.join('%20')});
-    } else if ('code' in query) {
+    if(query['mode'] == 'auth') response.writeHead(307, {'Location': config.FITBIT_OAUTH_URL + '?response_type=code&client_id=' + config.FITBIT_CLIENT_ID + '&redirect_uri=' + config.FITBIT_REDIRECT_URL + '&scope=' + config.FITBIT_SCOPE.join('%20')});
+    else if ('code' in query) {
       // This is executed when the user has authorized with fitbit and is redirected back to the server
       let options = {
         url: config.FITBIT_TOKEN_URL,
@@ -54,6 +53,7 @@ function connect() {
           userId = data.user_id;
           updateTokenStorage();
         }
+        else console.log({'Error': err, 'Statuscode': res.statusCode});
       });
     } else {
       let expiresIn = Math.floor((accessTokenExpiry-Date.now())/1000);
@@ -82,7 +82,6 @@ function tokenRefresh() {
           refresh_token: refreshToken
         }
       }
-
       request(options, function(err, res, body) {
         if (!err && res.statusCode == 200) {
           let data = JSON.parse(body);
@@ -90,18 +89,14 @@ function tokenRefresh() {
           accessTokenExpiry = Date.now()+(data.expires_in*1000);
           refreshToken = data.refresh_token;
           userId = data.user_id;
-          console.log('Access token refreshed');
+          console.log('access token refreshed');
           updateTokenStorage();
           fulfill();
         }
         else reject({'Error': err, 'Statuscode': res.statusCode});
       });
-    } else if (typeof accessToken !== 'undefined' && Date.now()<=(Number(accessTokenExpiry)-buffer)) {
-      fulfill();
-    }
-    else {
-      reject(new Error('Access token could not be renewed, visit http://localhost/?mode=auth to authorize.'));
-    }
+    } else if (typeof accessToken !== 'undefined' && Date.now()<=(Number(accessTokenExpiry)-buffer)) fulfill();
+    else reject(new Error('Access token could not be renewed, visit http://localhost/?mode=auth to authorize.'));
   });
 }
 
@@ -119,7 +114,7 @@ function updateTokenStorage() {
 
 function apiRequest(resourcePath) {
   return new Promise(function(fulfill, reject){
-    console.log('Fetching: ' + config.FITBIT_RESOURCE_BASE_URL + 'user/-/' + resourcePath);
+    //console.log('fetching: ' + config.FITBIT_RESOURCE_BASE_URL + 'user/-/' + resourcePath);
     var options = {
       url: config.FITBIT_RESOURCE_BASE_URL + 'user/-/' + resourcePath,
       method: 'GET',
@@ -128,7 +123,12 @@ function apiRequest(resourcePath) {
       }
     }
     request(options, function(err, res, body) {
-      if (!err && res.statusCode == 200) fulfill(JSON.parse(body));
+      if (!err && res.statusCode == 200) {
+        fs.writeFile('./result_history/' + resourcePath.replace(/\//g, '_'), body, function(err) { // write every request to file system as reference for debugging and backup of original fitbit data
+          if (err) throw err;
+        });
+        fulfill(JSON.parse(body));
+      }
       else reject({'Error': err, 'Statuscode': res.statusCode});
     });
   });

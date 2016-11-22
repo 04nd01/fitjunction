@@ -12,103 +12,121 @@ var pool = mysql.createPool({
 var fitbitConnector = require('./fitbit_connector.js');
 var completeness;
 
+fitbitConnector.connect();
+
+console.log('press "r" to retrieve another day or "q" to quit');
+var stdin = process.stdin;
+// without this, we would only get streams once enter is pressed
+stdin.setRawMode( true );
+stdin.resume();
+stdin.setEncoding( 'utf8' );
+stdin.on( 'data', function(key){
+  // "q", "Q", "ctrl-c"
+  if (key === '\u0071' || key === '\u0051' || key === '\u0003') {
+    pool.end(function (err) {
+      process.exit(0);
+    });
+  }
+  else if (key === '\u0072' || key === '\u0052') {
+    console.log('Retrieve:');
+    retrieveData();
+  }
+});
+
+retrieveData()
+.then(() => console.log('success!'))
+.catch(function(err) { console.log(err); });
+
+
 function queryPromised() {
   let firstLevelArgs = arguments;
-  console.log('REQUEST: ' + JSON.stringify(firstLevelArgs));
+  //console.log('REQUEST: ' + JSON.stringify(firstLevelArgs));
   return new Promise(function(fulfill, reject){
     pool.getConnection(function(err, connection) {
       if (err) { reject(err); return; }
       connection.query(...firstLevelArgs, function(err, rows, fields) {
         if (err) { reject(err); return; }
-        console.log('RESULT: ' + JSON.stringify(rows));
+        //console.log('RESULT: ' + JSON.stringify(rows));
         fulfill(rows);
       });
     });
   });
 };
 
-fitbitConnector.tokenRefresh()
-.then(() => queryPromised('SELECT table_name, time FROM completeness')) // queryAsync will run asynchronous to the promise chain if called directly with static arguments
-.then(function(rows) {
-  return new Promise(function(fulfill, reject){
-    completeness = {};
-    for(var i=0;i<rows.length;i++)
-    {
-      let startTime;
-      if (rows[i].time === null) startTime = moment(config.FITBIT_ACCOUNT_CREATION);
-      else startTime = moment(rows[i].time);
-      let startDay = moment(startTime).startOf('day');
-      completeness[rows[i].table_name] = {
-        'startTime': startTime,
-        'startDay': startDay,
-        'currentDay': moment().startOf('day'),
-        'nextDay': moment(startDay).add(1, 'd')
-      };
-    }
+function retrieveData() {
+  fitbitConnector.tokenRefresh()
+  .then(() => queryPromised('SELECT table_name, time FROM completeness')) // queryAsync will run asynchronous to the promise chain if called directly with static arguments
+  .then(function(rows) {
+    return new Promise(function(fulfill, reject){
+      completeness = {};
+      for(var i=0;i<rows.length;i++)
+      {
+        let startTime;
+        if (rows[i].time === null) startTime = moment(config.FITBIT_ACCOUNT_CREATION);
+        else startTime = moment(rows[i].time);
+        let startDay = moment(startTime).startOf('day');
+        completeness[rows[i].table_name] = {
+          'startTime': startTime,
+          'startDay': startDay,
+          'currentDay': moment().startOf('day'),
+          'nextDay': moment(startDay).add(1, 'd')
+        };
+      }
 
-    // Single Data types commented for testing
+      // BODY FAT
+      fitbitConnector.apiRequest('body/log/fat/date/' + completeness.body_fat.startDay.format('YYYY-MM-DD') + '.json')
+      .then(fitbitDataWriter)
+      .catch(function(err) { console.log(err); });
 
-    /*
-    // BODY FAT
-    fitbitConnector.apiRequest('body/log/fat/date/' + completeness.body_fat.startDay.format('YYYY-MM-DD') + '.json')
-    .then(fitbitDataWriter)
-    .catch(function(err) { console.log(err); });
-    */
+/*
+      // WEIGHT
+      fitbitConnector.apiRequest('body/log/weight/date/' + completeness.weight.startDay.format('YYYY-MM-DD') + '.json')
+      .then(fitbitDataWriter)
+      .catch(function(err) { console.log(err); });
 
-    /*
-    // WEIGHT
-    fitbitConnector.apiRequest('body/log/weight/date/' + completeness.weight.startDay.format('YYYY-MM-DD') + '.json')
-    .then(fitbitDataWriter)
-    .catch(function(err) { console.log(err); });
-    */
+      // HEART RATE
+      fitbitConnector.apiRequest('activities/heart/date/' + completeness.hr_intraday.startDay.format('YYYY-MM-DD') + '/1d/1sec.json')
+      .then(fitbitDataWriter)
+      .catch(function(err) { console.log(err); });
 
-    /*
-    // HEART RATE
-    fitbitConnector.apiRequest('activities/heart/date/' + completeness.hr_intraday.startDay.format('YYYY-MM-DD') + '/1d/1sec.json')
-    .then(fitbitDataWriter)
-    .catch(function(err) { console.log(err); });
-    */
-
-    /*
-    // ACTIVITY INTRADAY
-    let getActivities = [
-      fitbitConnector.apiRequest('activities/steps/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
-      fitbitConnector.apiRequest('activities/distance/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
-      fitbitConnector.apiRequest('activities/floors/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
-      fitbitConnector.apiRequest('activities/elevation/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
-      fitbitConnector.apiRequest('activities/calories/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json')
-    ];
-
-    Promise.all(getActivities)
-    .then(function(result) {
-      return new Promise(function(fulfill, reject){
-        fulfill({
-          'steps': result[0]['activities-steps-intraday']['dataset'],
-          'distance': result[1]['activities-distance-intraday']['dataset'],
-          'floors': result[2]['activities-floors-intraday']['dataset'],
-          'elevation': result[3]['activities-elevation-intraday']['dataset'],
-          'calories': result[4]['activities-calories-intraday']['dataset']
+      // ACTIVITY INTRADAY
+      let getActivities = [
+        fitbitConnector.apiRequest('activities/steps/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
+        fitbitConnector.apiRequest('activities/distance/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
+        fitbitConnector.apiRequest('activities/floors/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
+        fitbitConnector.apiRequest('activities/elevation/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json'),
+        fitbitConnector.apiRequest('activities/calories/date/' + completeness.activity_intraday.startDay.format('YYYY-MM-DD') + '/1d/1min.json')
+      ];
+      Promise.all(getActivities)
+      .then(function(result) {
+        return new Promise(function(fulfill, reject){
+          fulfill({
+            'steps': result[0]['activities-steps-intraday']['dataset'],
+            'distance': result[1]['activities-distance-intraday']['dataset'],
+            'floors': result[2]['activities-floors-intraday']['dataset'],
+            'elevation': result[3]['activities-elevation-intraday']['dataset'],
+            'calories': result[4]['activities-calories-intraday']['dataset']
+          });
         });
-      });
-    })
-    .then(fitbitDataWriter)
-    .catch(function(err) { console.log(err); });
-    */
+      })
+      .then(fitbitDataWriter)
+      .catch(function(err) { console.log(err); });
 
-    // SLEEP (incomplete)
-    fitbitConnector.apiRequest('sleep/date/' + completeness.sleep.startDay.format('YYYY-MM-DD') + '.json')
-    .then(fitbitDataWriter)
-    .catch(function(err) { console.log(err); });
+      // SLEEP
+      fitbitConnector.apiRequest('sleep/date/' + completeness.sleep.startDay.format('YYYY-MM-DD') + '.json')
+      .then(fitbitDataWriter)
+      .catch(function(err) { console.log(err); });
+*/
 
-
-
-    fulfill();
-  });
-})
-.catch(function(err) { console.log(err); });
+      fulfill();
+    });
+  })
+  .catch(function(err) { console.log(err); });
+};
 
 function updateCompleteness(tableName, currentEntry) {
-  if (currentEntry == null) console.log('No "' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ', updating completeness table');
+  if (currentEntry == null) console.log('no "' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ', updating completeness table');
+  else console.log('"' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ' written, updating completeness table');
   if (completeness[tableName].startDay < completeness[tableName].currentDay) queryPromised('UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].nextDay.format('YYYY-MM-DD'), tableName]).catch(function(err) { reject(err); return; });
   else
   {
@@ -172,15 +190,11 @@ function fitbitDataWriter(result) {
           let currentEntry;
           Object.keys(heartRateIntraday).forEach(function(key) {
             currentEntry = moment(completeness.hr_intraday.startDay.format('YYYY-MM-DD') + ' ' + heartRateIntraday[key]['time']);
-            if (currentEntry > completeness.hr_intraday.startTime)
-            {
-              rows.push('("' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + '", "' + heartRateIntraday[key]['value'] + '")');
-            }
+            if (currentEntry > completeness.hr_intraday.startTime) rows.push('("' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + '", "' + heartRateIntraday[key]['value'] + '")');
           });
-          console.log(rows.length);
           let allRows = rows.join(', ');
           queryPromised('INSERT INTO hr_intraday (time, hr) VALUES ' + allRows).catch(function(err) { reject(err); return; });
-          updateCompleteness('weight', currentEntry);
+          updateCompleteness('hr_intraday', currentEntry);
         }
         fulfill();
         break;
@@ -200,15 +214,16 @@ function fitbitDataWriter(result) {
             + result.calories[key]['level'] + '")');
           }
         });
-
-        // reset currententry to the minute before the last row and remove last row. This is to make sure only complete minutes are written to the db
-        currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[lastKey]['time']);
-        currentEntry = moment(currentEntry).subtract(30, 'seconds');
-        rows.splice(-1,1);
-        let allRows = rows.join(', ');
-
-        queryPromised('INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows).catch(function(err) { reject(err); return; });
-        updateCompleteness('activity_intraday', currentEntry);
+        if(rows.length > 0) {
+          // reset currentEntry to the minute before the last row and remove last row. This is to make sure only complete minutes are written to the db
+          currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[lastKey]['time']);
+          currentEntry = moment(currentEntry).subtract(30, 'seconds');
+          rows.splice(-1,1);
+          let allRows = rows.join(', ');
+          queryPromised('INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows).catch(function(err) { reject(err); return; });
+          updateCompleteness('activity_intraday', currentEntry);
+        }
+        else updateCompleteness('activity_intraday');
         fulfill();
         break;
       case 'sleep':
@@ -220,7 +235,7 @@ function fitbitDataWriter(result) {
           function sleepLog(key) {
             return new Promise(function (fulfill, reject){
               let isMainSleep, startTime, endTime;
-              if (sleep[key]['isMainSleep'] == 'true') isMainSleep = 1;
+              if (sleep[key]['isMainSleep'] == true) isMainSleep = 1;
               else isMainSleep = 0;
               startTime = moment(sleep[key]['startTime']);
               endTime = moment(sleep[key]['startTime']);
@@ -237,34 +252,23 @@ function fitbitDataWriter(result) {
                 let allRows = rows.join(', ');
                 queryPromised('INSERT INTO sleep_by_minute (time, id_sleep, id_sleep_states) VALUES ' + allRows).catch(function(err) { reject(err); return; });
               })
-              //.then(queryPromised)
+              .then(queryPromised)
               .catch(function(err) { reject(err); return; });
               fulfill();
             });
           };
           Object.keys(sleep).forEach(function(key) {
-            currentEntry = moment(sleep[key]['startTime']);
-            console.log('starttime: ' + completeness.sleep.startTime.format('YYYY-MM-DD HH:mm:ss'));
-            console.log('sleepstarttime: ' + currentEntry.format('YYYY-MM-DD HH:mm:ss'));
-
-            // if the time part of startTime is 00:00:00 also accept entries from the day before
-            if (currentEntry > completeness.sleep.startTime) {
-              insertSleep.push(sleepLog(key));
-            }
+            currentEntry = moment(sleep[key]['startTime']).add(sleep[key]['timeInBed'], 'minutes'); // using endTime because the start time of the sleep will usually be the day before
+            if (currentEntry > completeness.sleep.startTime) insertSleep.push(sleepLog(key));
           });
           Promise.all(insertSleep)
           .catch(function(err) { reject(err); return; });
-
-          updateCompleteness('sleep', moment(sleep[Object.keys(sleep).slice(-1)[0]]['startTime']));
+          updateCompleteness('sleep', currentEntry);
         }
         fulfill();
         break;
       default:
-        reject("Can't recognize data type of API result.");
+        reject("can't recognize data type of API result.");
     }
   });
 };
-
-//deactivated for testing
-//fitbitConnector.connect();
-//console.log('listening...');
