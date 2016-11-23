@@ -18,7 +18,7 @@ try {
 }
 catch (e) {
   if (e instanceof Error && e.code === 'MODULE_NOT_FOUND') {
-    console.log('token.json not found, visit http://localhost/?mode=auth to authorize.');
+    console.log('Token.json not found, visit http://localhost/?mode=auth to authorize.');
   } else {
     throw e;
   }
@@ -63,7 +63,7 @@ function connect() {
   }
   var server = http.createServer(requestListener);
   server.listen(80);
-  console.log('listening on port 80...');
+  console.log('Listening on port 80...');
 }
 
 function tokenRefresh() {
@@ -89,7 +89,7 @@ function tokenRefresh() {
           accessTokenExpiry = Date.now()+(data.expires_in*1000);
           refreshToken = data.refresh_token;
           userId = data.user_id;
-          console.log('access token refreshed');
+          console.log('Access token refreshed.');
           updateTokenStorage();
           fulfill();
         }
