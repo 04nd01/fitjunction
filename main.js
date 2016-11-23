@@ -222,7 +222,7 @@ function fitbitDataWriter(result) {
       });
       if (rows.length == 0) return updateCompleteness('activity_intraday');
       else {
-        if (completeness[tableName].startDay = completeness[tableName].currentDay)
+        if (completeness.activity_intraday.startDay == completeness.activity_intraday.currentDay)
         {
           // reset currentEntry to the minute before the last row and remove last row. This is to make sure only complete minutes are written to the db
           // only if the day isn't over yet
@@ -259,7 +259,7 @@ function fitbitDataWriter(result) {
               currentMinute.add(1, 'minutes');
             });
             let allRows = rows.join(', ');
-            queryPromised('INSERT INTO sleep_by_minute (time, id_sleep, id_sleep_states) VALUES ' + allRows).catch(function(err) { reject(err); return; });
+            return Promise.resolve('INSERT INTO sleep_by_minute (time, id_sleep, id_sleep_states) VALUES ' + allRows);
           })
           .then(queryPromised);
         };

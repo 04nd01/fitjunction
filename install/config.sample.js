@@ -1,4 +1,4 @@
-// Rename to config.js
+// Copy to root directory and rename to config.js
 
 const FITBIT_OAUTH_URL = 'https://www.fitbit.com/oauth2/authorize';
 const FITBIT_TOKEN_URL = 'https://api.fitbit.com/oauth2/token';
