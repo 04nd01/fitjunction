@@ -222,10 +222,14 @@ function fitbitDataWriter(result) {
       });
       if (rows.length == 0) return updateCompleteness('activity_intraday');
       else {
-        // reset currentEntry to the minute before the last row and remove last row. This is to make sure only complete minutes are written to the db
-        currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[lastKey]['time']);
-        currentEntry = moment(currentEntry).subtract(30, 'seconds');
-        rows.splice(-1,1);
+        if (completeness[tableName].startDay = completeness[tableName].currentDay)
+        {
+          // reset currentEntry to the minute before the last row and remove last row. This is to make sure only complete minutes are written to the db
+          // only if the day isn't over yet
+          currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[lastKey]['time']);
+          currentEntry = moment(currentEntry).subtract(30, 'seconds');
+          rows.splice(-1,1);
+        }
         let allRows = rows.join(', ');
         return queryPromised('INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows)
         .then(() => updateCompleteness('activity_intraday', currentEntry));
