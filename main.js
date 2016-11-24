@@ -1,19 +1,11 @@
 var fs = require('fs');
-var mysql = require('mysql');
 var moment = require('moment');
 var config = require('./config.js');
-var pool = mysql.createPool({
-  'host': config.MYSQL_HOST,
-  'user': config.MYSQL_USER,
-  'password': config.MYSQL_PASSWORD,
-  'database': config.MYSQL_DB,
-  'dateStrings': true // output date as raw string to avoid automatic timezone conversion
-});
-var fitbitConnector = require('./fitbit_connector.js');
+var mysql = require('./mysql.js');
+var fitbitConnector = require('./fitbitconnector.js');
+fitbitConnector.connect();
 var completeness;
 var processingFlag = false;
-
-fitbitConnector.connect();
 
 console.log('Press "r" to retrieve another day or "q" to quit.');
 var stdin = process.stdin;
@@ -24,40 +16,23 @@ stdin.setEncoding('utf8');
 stdin.on('data', function(key) {
   // "q", "Q", "ctrl-c"
   if (key === '\u0071' || key === '\u0051' || key === '\u0003') {
-    pool.end(function (err) {
-      process.exit(0);
-    });
+    mysql.close()
+    .then(() => process.exit(0))
+    .catch(function(err) { console.log(err); });
   }
+  // "r", "R"
   else if (!processingFlag && (key === '\u0072' || key === '\u0052')) {
     retrieveData();
   }
 });
 
+// run once on start
 retrieveData()
-// split up retrievedata into another promise.all construct
-// promisify and see if everything finishes properly
-
-
-function queryPromised() {
-  let firstLevelArgs = arguments;
-  //console.log('REQUEST: ' + JSON.stringify(firstLevelArgs));
-  return new Promise(function(fulfill, reject){
-    pool.getConnection(function(err, connection) {
-      if (err) { reject(err); return; }
-      connection.query(...firstLevelArgs, function(err, rows, fields) {
-        connection.release();
-        if (err) { reject(err); return; }
-        //console.log('RESULT: ' + JSON.stringify(rows));
-        fulfill(rows);
-      });
-    });
-  });
-};
 
 function retrieveData() {
   processingFlag = true;
   fitbitConnector.tokenRefresh()
-  .then(() => queryPromised('SELECT table_name, time FROM completeness')) // queryAsync will run asynchronous to the promise chain if called directly with static arguments
+  .then(() => mysql.query('SELECT table_name, time FROM completeness')) // queryAsync will run asynchronous to the promise chain if called directly with static arguments
   .then(function(rows) {
     return new Promise(function(fulfill, reject){
       completeness = {};
@@ -137,11 +112,11 @@ function processItem(dataType) {
 function updateCompleteness(tableName, currentEntry) {
   if (currentEntry == null) console.log('No "' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ', updating completeness table.');
   else console.log('"' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ' written, updating completeness table.');
-  if (completeness[tableName].startDay < completeness[tableName].currentDay) return queryPromised('UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].nextDay.format('YYYY-MM-DD'), tableName]);
+  if (completeness[tableName].startDay < completeness[tableName].currentDay) return mysql.query('UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].nextDay.format('YYYY-MM-DD'), tableName]);
   else
   {
-    if (currentEntry == null) return queryPromised('UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].currentDay.format('YYYY-MM-DD'), tableName]);
-    else return queryPromised('UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry.format('YYYY-MM-DD HH:mm:ss'), tableName]);
+    if (currentEntry == null) return mysql.query('UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].currentDay.format('YYYY-MM-DD'), tableName]);
+    else return mysql.query('UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry.format('YYYY-MM-DD HH:mm:ss'), tableName]);
   }
 };
 
@@ -163,7 +138,7 @@ function fitbitDataWriter(result) {
           }
         });
         let allRows = rows.join(', ');
-        return  queryPromised('INSERT INTO body_fat (time, fat) VALUES ' + allRows)
+        return  mysql.query('INSERT INTO body_fat (time, fat) VALUES ' + allRows)
         .then(() => updateCompleteness('body_fat', newestEntry));
       }
       break;
@@ -183,7 +158,7 @@ function fitbitDataWriter(result) {
           }
         });
         let allRows = rows.join(', ');
-        return queryPromised('INSERT INTO weight (time, weight, bmi) VALUES ' + allRows)
+        return mysql.query('INSERT INTO weight (time, weight, bmi) VALUES ' + allRows)
         .then(() => updateCompleteness('weight', newestEntry));
       }
       break;
@@ -192,7 +167,7 @@ function fitbitDataWriter(result) {
       let heartRateIntraday = result['activities-heart-intraday']['dataset'];
       if (Object.keys(heartRateIntraday).length == 0) return updateCompleteness('hr_intraday');
       else {
-        if(restingHeartRate) queryPromised('INSERT INTO hr_resting (date, hr) VALUES (?, ?) ON DUPLICATE KEY UPDATE hr = ?', [completeness.hr_intraday.startDay.format('YYYY-MM-DD'), restingHeartRate, restingHeartRate]).catch(function(err) { reject(err); return; });
+        if(restingHeartRate) mysql.query('INSERT INTO hr_resting (date, hr) VALUES (?, ?) ON DUPLICATE KEY UPDATE hr = ?', [completeness.hr_intraday.startDay.format('YYYY-MM-DD'), restingHeartRate, restingHeartRate]).catch(function(err) { reject(err); return; });
         let rows = [];
         let currentEntry;
         Object.keys(heartRateIntraday).forEach(function(key) {
@@ -200,7 +175,7 @@ function fitbitDataWriter(result) {
           if (currentEntry > completeness.hr_intraday.startTime) rows.push('("' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + '", "' + heartRateIntraday[key]['value'] + '")');
         });
         let allRows = rows.join(', ');
-        return queryPromised('INSERT INTO hr_intraday (time, hr) VALUES ' + allRows)
+        return mysql.query('INSERT INTO hr_intraday (time, hr) VALUES ' + allRows)
         .then(() => updateCompleteness('hr_intraday', currentEntry));
       }
       break;
@@ -231,7 +206,7 @@ function fitbitDataWriter(result) {
           rows.splice(-1,1);
         }
         let allRows = rows.join(', ');
-        return queryPromised('INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows)
+        return mysql.query('INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows)
         .then(() => updateCompleteness('activity_intraday', currentEntry));
       }
       fulfill();
@@ -249,7 +224,7 @@ function fitbitDataWriter(result) {
           startTime = moment(sleep[key]['startTime']);
           endTime = moment(sleep[key]['startTime']);
           endTime.add(sleep[key]['timeInBed'], 'minutes');
-          return queryPromised('INSERT INTO sleep (is_main_sleep, efficiency, start_time, end_time, minutes_to_sleep, minutes_awake, minutes_after_wake, awake_count, awake_duration, restless_count, restless_duration, minutes_in_bed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [isMainSleep, sleep[key]['efficiency'], startTime.format('YYYY-MM-DD HH:mm:ss'), endTime.format('YYYY-MM-DD HH:mm:ss'), sleep[key]['minutesToFallAsleep'], sleep[key]['minutesAwake'], sleep[key]['minutesAfterWakeup'], sleep[key]['awakeCount'], sleep[key]['awakeDuration'], sleep[key]['restlessCount'], sleep[key]['restlessDuration'], sleep[key]['timeInBed']])
+          return mysql.query('INSERT INTO sleep (is_main_sleep, efficiency, start_time, end_time, minutes_to_sleep, minutes_awake, minutes_after_wake, awake_count, awake_duration, restless_count, restless_duration, minutes_in_bed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [isMainSleep, sleep[key]['efficiency'], startTime.format('YYYY-MM-DD HH:mm:ss'), endTime.format('YYYY-MM-DD HH:mm:ss'), sleep[key]['minutesToFallAsleep'], sleep[key]['minutesAwake'], sleep[key]['minutesAfterWakeup'], sleep[key]['awakeCount'], sleep[key]['awakeDuration'], sleep[key]['restlessCount'], sleep[key]['restlessDuration'], sleep[key]['timeInBed']])
           .then(function(result) {
             let rows = [];
             let minuteData = sleep[key]['minuteData'];
@@ -261,7 +236,7 @@ function fitbitDataWriter(result) {
             let allRows = rows.join(', ');
             return Promise.resolve('INSERT INTO sleep_by_minute (time, id_sleep, id_sleep_states) VALUES ' + allRows);
           })
-          .then(queryPromised);
+          .then(mysql.query);
         };
         Object.keys(sleep).forEach(function(key) {
           currentEntry = moment(sleep[key]['startTime']).add(sleep[key]['timeInBed'], 'minutes'); // using endTime because the start time of the sleep will usually be the day before
