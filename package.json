@@ -6,8 +6,9 @@
   "dependencies": {
     "moment": "^2.15.2",
     "mysql": "^2.11.1",
-    "request-debug": "^0.2.0",
-    "request": "^2.76.0"
+    "node-cron": "^1.1.2",
+    "request": "^2.76.0",
+    "request-debug": "^0.2.0"
   },
   "devDependencies": {},
   "scripts": {
