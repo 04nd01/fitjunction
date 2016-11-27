@@ -1,11 +1,21 @@
 #fitjunction
 
+<<<<<<< HEAD
 ##Fitbit API setup
 You'll need to create your own fitbit app for this but it only takes a few minutes. Go to https://dev.fitbit.com/apps and create an app with the following settings:
   * OAuth 2.0 Application Type: Personal
   * Callback URL: The URL should lead to the machine where you're running fitjunction, if your machine isn't reachable from the internet you can get around this by entering a URL that doesn't exist and changing that in your browser to http://localhost/ during authentification.
   * Default Access Type: Read-Only
 
+=======
+
+##Fitbit API setup
+You'll need to create your own fitbit app for this but it only takes a few minutes. Go to https://dev.fitbit.com/apps and create an app with the following settings:
+  * OAuth 2.0 Application Type: Personal
+  * Callback URL: The URL should lead to the machine where you're running fitjunction, if your machine isn't reachable from the internet you can get around this by entering a URL that doesn't exist and changing that in your browser to http://localhost/ during authentification.
+  * Default Access Type: Read-Only
+
+>>>>>>> origin/master
 ##Installation
 1. run "npm install" in root directory.
 1. Execute createdatabase.sql on your MySQL server to create the qsaggregator db and fill it with default values.
