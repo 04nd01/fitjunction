@@ -32,6 +32,7 @@ function query() {
 };
 
 function close() {
+  console.log('closing MySQL connection')
   return new Promise(function(fulfill, reject){
     pool.end(function (err) {
       if (err) reject(err);

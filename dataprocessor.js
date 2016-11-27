@@ -2,36 +2,63 @@ var moment = require('moment');
 var config = require('./config.js');
 var fitbitConnector = require('./fitbitconnector.js');
 var mysql = require('./mysql.js');
+var processingFlag = false;
+var quitFlag = false;
 
 function retrieveData() {
-  processingFlag = true;
-  fitbitConnector.tokenRefresh()
-  .then(() => mysql.query('SELECT table_name, time FROM completeness')) // queryAsync will run asynchronous to the promise chain if called directly with static arguments
-  .then(function(rows) {
-    return new Promise(function(fulfill, reject){
-      completeness = {};
-      for(var i=0;i<rows.length;i++)
-      {
-        let startTime;
-        if (rows[i].time === null) startTime = moment(config.FITBIT_ACCOUNT_CREATION);
-        else startTime = moment(rows[i].time);
-        let startDay = moment(startTime).startOf('day');
-        completeness[rows[i].table_name] = {
-          'startTime': startTime,
-          'startDay': startDay,
-          'currentDay': moment().startOf('day'),
-          'nextDay': moment(startDay).add(1, 'd')
-        };
-      }
-      var itemList = [processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')];
-      Promise.all(itemList)
-      .then(() => { console.log('Work unit processed. Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
-      .catch(function(err) { processingFlag = false; reject(err); return; });
+  if(!processingFlag && !quitFlag) {
+    processingFlag = true;
+    fitbitConnector.tokenRefresh()
+    .then(() => mysql.query('SELECT table_name, time FROM completeness')) // queryAsync will run asynchronous to the promise chain if called directly with static arguments
+    .then(function(rows) {
+      return new Promise(function(fulfill, reject){
+        completeness = {};
+        for(var i=0;i<rows.length;i++)
+        {
+          let startTime;
+          if (rows[i].time === null) startTime = moment(config.FITBIT_ACCOUNT_CREATION);
+          else startTime = moment(rows[i].time);
+          let startDay = moment(startTime).startOf('day');
+          completeness[rows[i].table_name] = {
+            'startTime': startTime,
+            'startDay': startDay,
+            'currentDay': moment().startOf('day'),
+            'nextDay': moment(startDay).add(1, 'd')
+          };
+        }
+        var itemList = [processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')];
+        Promise.all(itemList)
+        .then(() => { abortPoint(quitFlag, processingFlag); })
+        .then(() => { console.log('Work unit processed. Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
+        .catch(function(err) { processingFlag = false; reject(err); return; });
+        fulfill();
+      });
+    })
+    .catch(function(err) { console.log(err); processingFlag = false; });
+  }
+  else {
+    if(processingFlag) console.log('retrieveData() is already running');
+    abortPoint(quitFlag, processingFlag)
+    .catch(function(err) { console.log(err); });
+  }
+};
 
-      fulfill();
-    });
-  })
-  .catch(function(err) { console.log(err); });
+function abortPoint(quit, processing) {
+  return new Promise(function(fulfill, reject){
+    if(!quit) { Promise.resolve(); return; }
+    if (!processing)
+    {
+      console.log('quitting');
+      mysql.close()
+      .then(() => process.exit(0))
+      .catch(function(err) { console.log(err); process.exit(1); });
+    }
+    else console.log('quitting after curent run');
+  });
+};
+
+function setQuitFlag(value) {
+  quitFlag = value;
 };
 
 function processItem(dataType) {
@@ -231,4 +258,5 @@ function fitbitDataWriter(result) {
 
 module.exports = {
   retrieveData: retrieveData,
+  setQuitFlag: setQuitFlag,
 };

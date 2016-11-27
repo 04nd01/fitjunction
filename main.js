@@ -6,7 +6,6 @@ var fitbitConnector = require('./fitbitconnector.js');
 var dataProcessor = require('./dataprocessor.js');
 var mysql = require('./mysql.js');
 var completeness;
-var processingFlag = false;
 
 fitbitConnector.connect();
 
@@ -19,18 +18,17 @@ stdin.setEncoding('utf8');
 stdin.on('data', function(key) {
   // "q", "Q", "ctrl-c"
   if (key === '\u0071' || key === '\u0051' || key === '\u0003') {
-    mysql.close()
-    .then(() => process.exit(0))
-    .catch(function(err) { console.log(err); });
+    dataProcessor.setQuitFlag(true);
+    dataProcessor.retrieveData();
   }
   // "r", "R"
-  else if (!processingFlag && (key === '\u0072' || key === '\u0052')) {
+  else if (key === '\u0072' || key === '\u0052') {
     dataProcessor.retrieveData();
   }
 });
 
-// run once at start and then every 5 minutes (108 of 150 allowed Fitbit API requests per hour)
-dataProcessor.retrieveData();
-cron.schedule('*/5 * * * *', function(){
+// run once at start and then every x minutes
+setTimeout(dataProcessor.retrieveData,100);
+cron.schedule('*/' + config.REQUEST_FREQUENCY + ' * * * *', function(){
   dataProcessor.retrieveData();
 });

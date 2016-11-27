@@ -53,7 +53,7 @@ function connect() {
           userId = data.user_id;
           updateTokenStorage();
         }
-        else console.log({'Error': err, 'Statuscode': res.statusCode});
+        else reject({'Error': err, 'Statuscode': res.statusCode, 'Options:': options});
       });
     } else {
       let expiresIn = Math.floor((accessTokenExpiry-Date.now())/1000);
@@ -93,10 +93,10 @@ function tokenRefresh() {
           updateTokenStorage();
           fulfill();
         }
-        else reject({'Error': err, 'Statuscode': res.statusCode});
+        else reject({'Error': err, 'Statuscode': res.statusCode, 'Options:': options});
       });
-    } else if (typeof accessToken !== 'undefined' && Date.now()<=(Number(accessTokenExpiry)-buffer)) fulfill();
-    else reject(new Error('Access token could not be renewed, visit http://localhost/?mode=auth to authorize.'));
+    } else if (typeof accessToken !== 'undefined' && Date.now() <= (Number(accessTokenExpiry)-buffer)) fulfill();
+    else reject('Access token could not be renewed, visit http://localhost/?mode=auth to authorize.');
   });
 }
 
@@ -129,7 +129,7 @@ function apiRequest(resourcePath) {
         });
         fulfill(JSON.parse(body));
       }
-      else reject({'Error': err, 'Statuscode': res.statusCode});
+      else reject({'Error': err, 'Statuscode': res.statusCode, 'Options:': options});
     });
   });
 }
