@@ -1,3 +1,4 @@
+var log = require('winston');
 var moment = require('moment');
 var config = require('./config.js');
 var fitbitConnector = require('./fitbitconnector.js');
@@ -29,17 +30,17 @@ function retrieveData() {
         var itemList = [processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')];
         Promise.all(itemList)
         .then(() => { abortPoint(quitFlag, processingFlag); })
-        .then(() => { console.log('Work unit processed. Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
+        .then(() => { log.info('Work unit processed. Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
         .catch(function(err) { processingFlag = false; reject(err); return; });
         fulfill();
       });
     })
-    .catch(function(err) { console.log(err); processingFlag = false; });
+    .catch(function(err) { log.error(err); processingFlag = false; });
   }
   else {
-    if(processingFlag) console.log('retrieveData() is already running');
+    if(processingFlag) log.warn('retrieveData() is already running.');
     abortPoint(quitFlag, processingFlag)
-    .catch(function(err) { console.log(err); });
+    .catch(function(err) { log.error(err); });
   }
 };
 
@@ -48,12 +49,12 @@ function abortPoint(quit, processing) {
     if(!quit) { Promise.resolve(); return; }
     if (!processing)
     {
-      console.log('quitting');
+      log.info('fitjunction shutting down.');
       mysql.close()
       .then(() => process.exit(0))
-      .catch(function(err) { console.log(err); process.exit(1); });
+      .catch(function(err) { log.error(err); process.exit(1); });
     }
-    else console.log('quitting after curent run');
+    else log.info('Exit requested but tasks are still running. fitjunction will shutdown after tasks are finished.');
   });
 };
 
@@ -66,17 +67,17 @@ function processItem(dataType) {
     case 'fat':
       return fitbitConnector.apiRequest('body/log/fat/date/' + completeness.body_fat.startDay.format('YYYY-MM-DD') + '.json')
       .then(fitbitDataWriter)
-      .catch(function(err) { console.log(err); });
+      .catch(function(err) { log.error(err); });
       break;
     case 'weight':
       return fitbitConnector.apiRequest('body/log/weight/date/' + completeness.weight.startDay.format('YYYY-MM-DD') + '.json')
       .then(fitbitDataWriter)
-      .catch(function(err) { console.log(err); });
+      .catch(function(err) { log.error(err); });
       break;
     case 'hr':
       return fitbitConnector.apiRequest('activities/heart/date/' + completeness.hr_intraday.startDay.format('YYYY-MM-DD') + '/1d/1sec.json')
       .then(fitbitDataWriter)
-      .catch(function(err) { console.log(err); });
+      .catch(function(err) { log.error(err); });
       break;
     case 'activity':
       let getActivities = [
@@ -97,22 +98,22 @@ function processItem(dataType) {
         });
       })
       .then(fitbitDataWriter)
-      .catch(function(err) { console.log(err); });
+      .catch(function(err) { log.error(err); });
       break;
     case 'sleep':
       return fitbitConnector.apiRequest('sleep/date/' + completeness.sleep.startDay.format('YYYY-MM-DD') + '.json')
       .then(fitbitDataWriter)
-      .catch(function(err) { console.log(err); });
+      .catch(function(err) { log.error(err); });
       break;
     default:
-      console.log('unknown data type requested');
+      log.error('unknown data type requested');
       return Promise.resolve();
   }
 };
 
 function updateCompleteness(tableName, currentEntry) {
-  if (currentEntry == null) console.log('No "' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ', updating completeness table.');
-  else console.log('"' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ' written, updating completeness table.');
+  if (currentEntry == null) log.info('No "' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ', updating completeness table.');
+  else log.info('"' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ' written, updating completeness table.');
   if (completeness[tableName].startDay < completeness[tableName].currentDay) return mysql.query('UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].nextDay.format('YYYY-MM-DD'), tableName]);
   else
   {

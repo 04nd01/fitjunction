@@ -1,3 +1,35 @@
+var log = require('winston');
+log.configure({
+  transports: [
+    new (log.transports.Console)({
+      level: 'info',
+      timestamp: function() {
+        return moment().format('YYYY-MM-DD HH:mm:ss');
+      },
+      formatter: function(options) {
+        // Return string will be passed to logger.
+        return options.timestamp() + ' [' + options.level.toUpperCase() + '] ' + (options.message ? options.message : '') +
+          (options.meta && Object.keys(options.meta).length ? '\n\t'+ JSON.stringify(options.meta) : '' );
+      }
+    }),
+    new (log.transports.File)({
+      filename: 'fitjunction.log',
+      maxsize: 5242880, //5MB
+      maxFiles: 5,
+      json: false,
+      level: 'debug',
+      timestamp: function() {
+        return moment().format('YYYY-MM-DD HH:mm:ss');
+      },
+      formatter: function(options) {
+        // Return string will be passed to logger.
+        return options.timestamp() + ' [' + options.level.toUpperCase() + '] ' + (options.message ? options.message : '') +
+          (options.meta && Object.keys(options.meta).length ? '\n\t'+ JSON.stringify(options.meta) : '' );
+      }
+    })
+  ],
+  exitOnError: false
+});
 var fs = require('fs');
 var moment = require('moment');
 var cron = require('node-cron');
@@ -7,9 +39,10 @@ var dataProcessor = require('./dataprocessor.js');
 var mysql = require('./mysql.js');
 var completeness;
 
+log.verbose('fitjunction initialized');
+
 fitbitConnector.connect();
 
-console.log('Press "r" to retrieve another day or "q" to quit.');
 var stdin = process.stdin;
 // without this, we would only get streams once enter is pressed
 stdin.setRawMode(true);

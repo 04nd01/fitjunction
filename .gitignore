@@ -7,5 +7,6 @@ $RECYCLE.BIN/
 config.js
 test.js
 token.json
+*.log
 node_modules/
 sample files/

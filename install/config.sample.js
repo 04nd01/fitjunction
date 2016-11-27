@@ -14,6 +14,7 @@ const REQUEST_FREQUENCY = '5'; // Retrieval of new days will run every x minutes
 // ----------------------------------------------
 // Only touch these if you know what you're doing
 // ----------------------------------------------
+const LOG_LEVEL = 'verbose'; // Log level for fitjunction.log. Error levels are: error, warn, info, verbose, debug, silly. Debug logs all MySQL queries and results so it will get big quickly.
 const FITBIT_OAUTH_URL = 'https://www.fitbit.com/oauth2/authorize';
 const FITBIT_TOKEN_URL = 'https://api.fitbit.com/oauth2/token';
 const FITBIT_RESOURCE_BASE_URL = 'https://api.fitbit.com/1/';
