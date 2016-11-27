@@ -22,6 +22,7 @@ const FITBIT_SCOPE = ['activity','heartrate','location','nutrition','profile','s
 const FITBIT_ID_SECRET_BASE64 = new Buffer(FITBIT_CLIENT_ID + ':' + FITBIT_CLIENT_SECRET).toString('base64');
 
 module.exports = {
+  REQUEST_FREQUENCY: REQUEST_FREQUENCY,
   FITBIT_OAUTH_URL: FITBIT_OAUTH_URL,
   FITBIT_TOKEN_URL: FITBIT_TOKEN_URL,
   FITBIT_RESOURCE_BASE_URL: FITBIT_RESOURCE_BASE_URL,
