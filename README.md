@@ -1,5 +1,6 @@
 #fitjunction
 
+
 ##Fitbit API setup
 You'll need to create your own fitbit app for this but it only takes a few minutes. Go to https://dev.fitbit.com/apps and create an app with the following settings:
   * OAuth 2.0 Application Type: Personal
