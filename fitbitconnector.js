@@ -1,3 +1,4 @@
+var log = require('winston');
 var http = require('http');
 var url = require('url');
 var request = require('request');
@@ -18,7 +19,7 @@ try {
 }
 catch (e) {
   if (e instanceof Error && e.code === 'MODULE_NOT_FOUND') {
-    console.log('Token.json not found, visit http://localhost/?mode=auth to authorize.');
+    log.warn('Token.json not found, visit http://localhost/?mode=auth to authorize.');
   } else {
     throw e;
   }
@@ -53,7 +54,7 @@ function connect() {
           userId = data.user_id;
           updateTokenStorage();
         }
-        else console.log({'Error': err, 'Statuscode': res.statusCode});
+        else reject({'Error': err, 'Statuscode': res.statusCode, 'Options:': options});
       });
     } else {
       let expiresIn = Math.floor((accessTokenExpiry-Date.now())/1000);
@@ -63,7 +64,7 @@ function connect() {
   }
   var server = http.createServer(requestListener);
   server.listen(80);
-  console.log('Listening on port 80...');
+  log.info('Listening on port 80...');
 }
 
 function tokenRefresh() {
@@ -89,14 +90,14 @@ function tokenRefresh() {
           accessTokenExpiry = Date.now()+(data.expires_in*1000);
           refreshToken = data.refresh_token;
           userId = data.user_id;
-          console.log('Access token refreshed.');
+          log.info('Access token refreshed.');
           updateTokenStorage();
           fulfill();
         }
-        else reject({'Error': err, 'Statuscode': res.statusCode});
+        else reject({'Error': err, 'Statuscode': res.statusCode, 'Options:': options});
       });
-    } else if (typeof accessToken !== 'undefined' && Date.now()<=(Number(accessTokenExpiry)-buffer)) fulfill();
-    else reject(new Error('Access token could not be renewed, visit http://localhost/?mode=auth to authorize.'));
+    } else if (typeof accessToken !== 'undefined' && Date.now() <= (Number(accessTokenExpiry)-buffer)) fulfill();
+    else reject('Access token could not be renewed, visit http://localhost/?mode=auth to authorize.');
   });
 }
 
@@ -114,9 +115,10 @@ function updateTokenStorage() {
 
 function apiRequest(resourcePath) {
   return new Promise(function(fulfill, reject){
-    //console.log('fetching: ' + config.FITBIT_RESOURCE_BASE_URL + 'user/-/' + resourcePath);
+    let requestUrl = config.FITBIT_RESOURCE_BASE_URL + 'user/-/' + resourcePath;
+    log.verbose('Fetching: ' + requestUrl);
     var options = {
-      url: config.FITBIT_RESOURCE_BASE_URL + 'user/-/' + resourcePath,
+      url: requestUrl,
       method: 'GET',
       headers: {
         'Authorization': 'Bearer ' + accessToken
@@ -129,7 +131,7 @@ function apiRequest(resourcePath) {
         });
         fulfill(JSON.parse(body));
       }
-      else reject({'Error': err, 'Statuscode': res.statusCode});
+      else reject({'Error': err, 'Statuscode': res.statusCode, 'Options:': options});
     });
   });
 }

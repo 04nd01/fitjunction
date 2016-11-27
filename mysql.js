@@ -1,3 +1,4 @@
+var log = require('winston');
 var config = require('./config.js');
 var mysql = require('mysql');
 var pool;
@@ -5,6 +6,7 @@ var pool;
 open();
 // a pool is created on require so it's only necessary to open a pool if it's been closed manually
 function open() {
+  log.verbose('Opening MySQL connection pool.');
   pool = mysql.createPool({
     'host': config.MYSQL_HOST,
     'user': config.MYSQL_USER,
@@ -17,14 +19,16 @@ function open() {
 
 function query() {
   let firstLevelArgs = arguments;
-  //console.log('MYSQL QUERY: ' + JSON.stringify(firstLevelArgs));
+  // seome quick unique-enough identifier to match queries to their respective results during async operations
+  let rnd = Math.random().toString().substring(2);
+  log.debug('MySQL query (' + rnd + '): ', firstLevelArgs);
   return new Promise(function(fulfill, reject){
     pool.getConnection(function(err, connection) {
       if (err) { reject(err); return; }
       connection.query(...firstLevelArgs, function(err, rows, fields) {
         connection.release();
         if (err) { reject(err); return; }
-        //console.log('RESULT: ' + JSON.stringify(rows));
+        log.debug('MySQL result (' + rnd + '): ', rows);
         fulfill(rows);
       });
     });
@@ -32,6 +36,7 @@ function query() {
 };
 
 function close() {
+  log.verbose('Closing MySQL connection pool.');
   return new Promise(function(fulfill, reject){
     pool.end(function (err) {
       if (err) reject(err);

@@ -1,3 +1,35 @@
+var log = require('winston');
+log.configure({
+  transports: [
+    new (log.transports.Console)({
+      level: 'info',
+      timestamp: function() {
+        return moment().format('YYYY-MM-DD HH:mm:ss');
+      },
+      formatter: function(options) {
+        // Return string will be passed to logger.
+        return options.timestamp() + ' [' + options.level.toUpperCase() + '] ' + (options.message ? options.message : '') +
+          (options.meta && Object.keys(options.meta).length ? '\n\t'+ JSON.stringify(options.meta) : '' );
+      }
+    }),
+    new (log.transports.File)({
+      filename: 'fitjunction.log',
+      maxsize: 5242880, //5MB
+      maxFiles: 5,
+      json: false,
+      level: 'debug',
+      timestamp: function() {
+        return moment().format('YYYY-MM-DD HH:mm:ss');
+      },
+      formatter: function(options) {
+        // Return string will be passed to logger.
+        return options.timestamp() + ' [' + options.level.toUpperCase() + '] ' + (options.message ? options.message : '') +
+          (options.meta && Object.keys(options.meta).length ? '\n\t'+ JSON.stringify(options.meta) : '' );
+      }
+    })
+  ],
+  exitOnError: false
+});
 var fs = require('fs');
 var moment = require('moment');
 var cron = require('node-cron');
@@ -6,11 +38,11 @@ var fitbitConnector = require('./fitbitconnector.js');
 var dataProcessor = require('./dataprocessor.js');
 var mysql = require('./mysql.js');
 var completeness;
-var processingFlag = false;
+
+log.verbose('fitjunction initialized');
 
 fitbitConnector.connect();
 
-console.log('Press "r" to retrieve another day or "q" to quit.');
 var stdin = process.stdin;
 // without this, we would only get streams once enter is pressed
 stdin.setRawMode(true);
@@ -19,18 +51,17 @@ stdin.setEncoding('utf8');
 stdin.on('data', function(key) {
   // "q", "Q", "ctrl-c"
   if (key === '\u0071' || key === '\u0051' || key === '\u0003') {
-    mysql.close()
-    .then(() => process.exit(0))
-    .catch(function(err) { console.log(err); });
+    dataProcessor.setQuitFlag(true);
+    dataProcessor.retrieveData();
   }
   // "r", "R"
-  else if (!processingFlag && (key === '\u0072' || key === '\u0052')) {
+  else if (key === '\u0072' || key === '\u0052') {
     dataProcessor.retrieveData();
   }
 });
 
-// run once at start and then every 5 minutes (108 of 150 allowed Fitbit API requests per hour)
-dataProcessor.retrieveData();
-cron.schedule('*/5 * * * *', function(){
+// run once at start and then every x minutes
+setTimeout(dataProcessor.retrieveData,100);
+cron.schedule('*/' + config.REQUEST_FREQUENCY + ' * * * *', function(){
   dataProcessor.retrieveData();
 });
