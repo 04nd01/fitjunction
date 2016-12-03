@@ -118,7 +118,10 @@ function updateCompleteness(tableName, currentEntry) {
   else
   {
     if (currentEntry == null) return mysql.query('UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].currentDay.format('YYYY-MM-DD'), tableName]);
-    else return mysql.query('UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry.format('YYYY-MM-DD HH:mm:ss'), tableName]);
+    else {
+      log.debug('Setting completeness to ' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + ' for table ' + tableName);
+      return mysql.query('UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry.format('YYYY-MM-DD HH:mm:ss'), tableName]);
+    }
   }
 };
 
@@ -187,7 +190,8 @@ function fitbitDataWriter(result) {
       break;
     case 'steps':
       let rows = [];
-      let currentEntry, lastKey;
+      let currentEntry = moment(completeness.activity_intraday.startTime);
+      let lastKey;
       Object.keys(result.steps).forEach(function(key) {
         currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[key]['time']);
         if (currentEntry > completeness.activity_intraday.startTime && result.steps[key]['value'] > 0)
@@ -201,7 +205,7 @@ function fitbitDataWriter(result) {
           + result.calories[key]['level'] + '")');
         }
       });
-      if (rows.length == 0) return updateCompleteness('activity_intraday');
+      if (rows.length == 0) return updateCompleteness('activity_intraday', currentEntry);
       else {
         if (completeness.activity_intraday.startDay == completeness.activity_intraday.currentDay)
         {
