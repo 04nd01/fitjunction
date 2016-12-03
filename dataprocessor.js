@@ -239,6 +239,7 @@ function fitbitDataWriter(result) {
             Object.keys(minuteData).forEach(function(sleepMinute) {
               rows.push('("' + currentMinute.format('YYYY-MM-DD HH:mm:ss') + '", "' + result.insertId + '", "' + minuteData[sleepMinute]['value'] + '")');
               currentMinute.add(1, 'minutes');
+              if(previousDst == true && currentMinute.isDST() == false) currentMinute.add(1, 'hours'); // Adjust for switch from DST to no DST. For lack of a better solution we push the sleep 1 hour ahead. Wakeup time will be off by one hour but the sleep by minute data will be complete
             	previousDst = currentMinute.isDST();
             });
             let allRows = rows.join(', ');
