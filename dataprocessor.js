@@ -235,9 +235,11 @@ function fitbitDataWriter(result) {
             let rows = [];
             let minuteData = sleep[key]['minuteData'];
             let currentMinute = moment(startTime); // incrementing from the startTime value instead of using the dateTime value from minuteData so we don't have to deal with changing from one day another
+            var previousDst = currentMinute.isDST();
             Object.keys(minuteData).forEach(function(sleepMinute) {
               rows.push('("' + currentMinute.format('YYYY-MM-DD HH:mm:ss') + '", "' + result.insertId + '", "' + minuteData[sleepMinute]['value'] + '")');
               currentMinute.add(1, 'minutes');
+            	previousDst = currentMinute.isDST();
             });
             let allRows = rows.join(', ');
             return Promise.resolve('INSERT INTO sleep_by_minute (time, id_sleep, id_sleep_states) VALUES ' + allRows);
