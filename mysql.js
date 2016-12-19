@@ -17,20 +17,15 @@ function open() {
   return Promise.resolve();
 };
 
-function query() {
-  let firstLevelArgs = arguments;
+function query(firstLevelArgs) { // if a mysql connection is supplied it will be used for the query, otherwise one will be pulled from the pool
   // seome quick unique-enough identifier to match queries to their respective results during async operations
   let rnd = Math.random().toString().substring(2);
   log.debug('MySQL query (' + rnd + '): ', firstLevelArgs);
   return new Promise(function(fulfill, reject){
-    pool.getConnection(function(err, connection) {
+    pool.query(...firstLevelArgs, function(err, rows, fields) {
       if (err) { reject(err); return; }
-      connection.query(...firstLevelArgs, function(err, rows, fields) {
-        connection.release();
-        if (err) { reject(err); return; }
-        log.debug('MySQL result (' + rnd + '): ', rows);
-        fulfill(rows);
-      });
+      log.debug('MySQL result (' + rnd + '): ', rows);
+      fulfill(rows);
     });
   });
 };
