@@ -112,16 +112,16 @@ function processItem(dataType) {
   }
 };
 
-function updateCompleteness(tableName, currentEntry) {
-  if (currentEntry == null) log.info('No "' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ', updating completeness table.');
+function updateCompleteness(tableName, currentEntry, connection) {
+  if (currentEntry == 'false') log.info('No "' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ', updating completeness table.');
   else log.info('"' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ' written, updating completeness table.');
-  if (completeness[tableName].startDay < completeness[tableName].currentDay) return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].nextDay.format('YYYY-MM-DD'), tableName]]);
+  if (completeness[tableName].startDay < completeness[tableName].currentDay) return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].nextDay.format('YYYY-MM-DD'), tableName]], connection);
   else
   {
-    if (currentEntry == null) return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].currentDay.format('YYYY-MM-DD'), tableName]]);
+    if (currentEntry == 'false') return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].currentDay.format('YYYY-MM-DD'), tableName]], connection);
     else {
       log.debug('Setting completeness to ' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + ' for table ' + tableName);
-      return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry.format('YYYY-MM-DD HH:mm:ss'), tableName]]);
+      return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry.format('YYYY-MM-DD HH:mm:ss'), tableName]], connection);
     }
   }
 };
@@ -130,7 +130,7 @@ function fitbitDataWriter(result) {
   switch(Object.keys(result)[0]) {
     case 'fat':
       let fat = result['fat'];
-      if (Object.keys(fat).length == 0) return updateCompleteness('body_fat');
+      if (Object.keys(fat).length == 0) return updateCompleteness('body_fat','false');
       else {
         let rows = [];
         let newestEntry = moment(completeness.body_fat.startTime);
@@ -150,7 +150,7 @@ function fitbitDataWriter(result) {
       break;
     case 'weight':
       let weight = result['weight'];
-      if (Object.keys(weight).length == 0) return updateCompleteness('weight');
+      if (Object.keys(weight).length == 0) return updateCompleteness('weight','false');
       else {
         let rows = [];
         let newestEntry = moment(completeness.weight.startTime);
@@ -171,7 +171,7 @@ function fitbitDataWriter(result) {
     case 'activities-heart':
       let restingHeartRate = result['activities-heart'][0]['value']['restingHeartRate'];  // value might still be undefined even if there's Intraday Data
       let heartRateIntraday = result['activities-heart-intraday']['dataset'];
-      if (Object.keys(heartRateIntraday).length == 0) return updateCompleteness('hr_intraday');
+      if (Object.keys(heartRateIntraday).length == 0) return updateCompleteness('hr_intraday','false');
       else {
         if(restingHeartRate) mysql.query(['INSERT INTO hr_resting (date, hr) VALUES (?, ?) ON DUPLICATE KEY UPDATE hr = ?', [completeness.hr_intraday.startDay.format('YYYY-MM-DD'), restingHeartRate, restingHeartRate]]).catch(function(err) { reject(err); return; });
         let rows = [];
@@ -224,7 +224,7 @@ function fitbitDataWriter(result) {
       break;
     case 'sleep':
       let sleep = result['sleep'];
-      if (Object.keys(sleep).length == 0) return updateCompleteness('sleep');
+      if (Object.keys(sleep).length == 0) return updateCompleteness('sleep','false');
       else {
         let currentEntry;
         let insertSleep = [];
@@ -261,7 +261,7 @@ function fitbitDataWriter(result) {
       }
       break;
     default:
-      Promise.reject("can't recognize data type of API result");
+      Promise.reject("Data type of API result not recognized.");
   }
 };
 
