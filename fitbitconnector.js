@@ -128,9 +128,11 @@ function apiRequest(resourcePath) {
     }
     request(options, function(err, res, body) {
       if (!err && res.statusCode == 200) {
-        fs.writeFile('./result_history/' + resourcePath.replace(/\//g, '_'), body, function(err) { // write every request to file system as reference for debugging and backup of original fitbit data
-          if (err) throw err;
-        });
+        if(config.STORE_JSON == true) {
+          fs.writeFile('./result_history/' + resourcePath.replace(/\//g, '_'), body, function(err) { // write every request to file system as reference for debugging and backup of original fitbit data
+            if (err) throw err;
+          });
+        }
         fulfill(JSON.parse(body));
       }
       else if(res.statusCode != 200) reject({'Statuscode': res.statusCode, 'Options:': options});

@@ -3,24 +3,6 @@ var config = require('./config.js');
 var mysql = require('mysql');
 var pool;
 
-/*
-TO DO
-vier neue mysql funktionen:
-1. öffnet, startet transaction und gibt connection zurück
-2. nimmt connection und argumente, setzt query ab
-3. nimmt connection und commited transaction
-4. nimmt connection und rollbacked transaction
-
-folgendes in jeden case des switch konstrukts
-funktion 1
-.then(
-funktion in der alles läuft was in dem case steht, mehrere aufrufe von funktion 2
-connection returnen(sowohl bei reject als auch bei resolve)
-)
-.then(transaction comitten mit funktion 3)
-.catch(transaction zurückrollen mit funktion 4)
-*/
-
 function startTransaction() {
   return new Promise(function(fulfill, reject){
     log.verbose('Getting connection from pool.');
@@ -42,23 +24,20 @@ function commit(connection) {
     log.verbose('Committing transaction.');
     connection.commit(function(err) {
       if (err) {
-        log.verbose('Commit failed. Rolling back transaction.');
-        connection.rollback(function(err) {
-          if (err) reject(err);
-          reject(err);
-        });
+        log.error('Commit failed. Rolling back transaction.');
+        return rollback(connection, err);
       }
       else fulfill();
     });
   });
 };
 
-function rollback(connection) {
+function rollback(connection, reason) {
   return new Promise(function(fulfill, reject){
-    log.verbose('Rolling back transaction.');
+    log.error('Rolling back transaction.');
     connection.rollback(function(err) {
-      if (err) reject(err);
-      else fulfill();
+      if (err) reject([reason, err]);
+      else reject(reason);
     });
   });
 };
@@ -87,8 +66,8 @@ function query(firstLevelArgs, connection) { // if a mysql connection is supplie
       log.debug('MySQL result (' + rnd + '): ', rows);
       fulfill(rows);
     };
-    if (connection != null) connection.query(...firstLevelArgs, callback);
-    else pool.query(...firstLevelArgs, callback);
+    if (connection != null) { log.debug('Executing query (' + rnd + ') using connection ID ' + connection.threadId + '.'); connection.query(...firstLevelArgs, callback); }
+    else { log.debug('Executing query (' + rnd + ') using connection from pool.'); pool.query(...firstLevelArgs, callback); }
   });
 };
 
