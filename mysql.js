@@ -27,7 +27,7 @@ function commit(connection) {
         log.error('Commit failed. Rolling back transaction.');
         return rollback(connection, err);
       }
-      else fulfill();
+      else { connection.release(); fulfill(); }
     });
   });
 };
@@ -36,8 +36,8 @@ function rollback(connection, reason) {
   return new Promise(function(fulfill, reject){
     log.error('Rolling back transaction.');
     connection.rollback(function(err) {
-      if (err) reject([reason, err]);
-      else reject(reason);
+      if (err) { connection.release(); reject([reason, err]); }
+      else { connection.release(); reject(reason); }
     });
   });
 };

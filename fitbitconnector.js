@@ -54,8 +54,8 @@ function connect() {
           userId = data.user_id;
           updateTokenStorage();
         }
-        else if(res.statusCode != 200) reject({'Statuscode': res.statusCode, 'Options:': options});
-        else reject({'Error': err, 'Options:': options});
+        else if(res.statusCode != 200) log.error({'Statuscode': res.statusCode, 'Options:': options});
+        else log.error({'Error': err, 'Options:': options});
       });
     } else {
       let expiresIn = Math.floor((accessTokenExpiry-Date.now())/1000);

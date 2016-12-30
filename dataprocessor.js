@@ -28,7 +28,7 @@ function retrieveData() {
           };
         }
         var itemList = [processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')];
-        //var itemList = [processItem('sleep')]; // testing
+        // var itemList = [processItem('hr'), processItem('activity')]; // testing
         Promise.all(itemList)
         .then(() => { log.info('Work unit processed. Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
         .then(() => { abortPoint(quitFlag, processingFlag); })
@@ -129,6 +129,7 @@ function updateCompleteness(tableName, currentEntry, connection) {
 function fitbitDataWriter(result) {
   switch(Object.keys(result)[0]) {
     case 'fat':
+      log.verbose('Start processing body fat data.');
       let fat = result['fat'];
       if (Object.keys(fat).length == 0) return updateCompleteness('body_fat','false');
       else {
@@ -155,6 +156,7 @@ function fitbitDataWriter(result) {
       }
       break;
     case 'weight':
+      log.verbose('Start processing weight data.');
       let weight = result['weight'];
       if (Object.keys(weight).length == 0) return updateCompleteness('weight','false');
       else {
@@ -181,6 +183,7 @@ function fitbitDataWriter(result) {
       }
       break;
     case 'activities-heart':
+      log.verbose('Start processing hr data.');
       let restingHeartRate = result['activities-heart'][0]['value']['restingHeartRate'];  // value might still be undefined even if there's Intraday Data
       let heartRateIntraday = result['activities-heart-intraday']['dataset'];
       if (Object.keys(heartRateIntraday).length == 0) return updateCompleteness('hr_intraday','false');
@@ -227,6 +230,7 @@ function fitbitDataWriter(result) {
           + result.calories[key]['level'] + '")');
         }
       });
+      log.debug('*** After activity loop');
       if (rows.length == 0) return updateCompleteness('activity_intraday', currentEntry);
       else {
         if (completeness.activity_intraday.startDay == completeness.activity_intraday.currentDay)
@@ -249,6 +253,7 @@ function fitbitDataWriter(result) {
       }
       break;
     case 'sleep':
+      log.verbose('Start processing sleep data.');
       let sleep = result['sleep'];
       if (Object.keys(sleep).length == 0) return updateCompleteness('sleep','false');
       else {
