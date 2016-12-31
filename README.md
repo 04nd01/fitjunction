@@ -4,7 +4,7 @@ Fitjunction uses the Fitbit API to periodically query your activity data and sto
 ##Motivation
 I've logged a lot of fitness data in the past years. Jogging, weight lifting, steps and heart rate to name a few. Some of that data is lost forever in services that have since been discontinued. To get the most out of my data collection efforts I'm in the process of creating a self-hosted centralized database of all quantified-self metrics that are of interest to me. Fitbit is the first step.
 
-Fitjunction will extract more detailed data from your Fitbit account than the built-in export function will. Whether you'd like to run more advanced analytics or you just want to have an offline backup fitjunction will give your data back to you. To that end the database structure has been kept close to the structure provided by Fitbit and every single day of fitness data queried from the Fitbit API is stored as a .json file.
+Fitjunction will extract more detailed data from your Fitbit account than the built-in export function will. Whether you'd like to run more advanced analytics or you just want to have an offline backup fitjunction will give your data back to you. To that end the database structure has been kept close to the structure provided by Fitbit and the raw data for every single day queried from the Fitbit API is stored as a .json file.
 
 ##Fitbit API setup
 You'll need to create your own Fitbit app for this but it only takes a few minutes. Go to https://dev.Fitbit.com/apps and create an app with the following settings:
@@ -19,9 +19,9 @@ You'll need to create your own Fitbit app for this but it only takes a few minut
 
 ##Updating
 (see package.json for version number)
-###1.0.0 > 1.0.1
+###1.0.0 > 1.1.0
   * Overwrite files
-  * Run "ALTER TABLE `activity_intraday` ADD UNIQUE(`time`);" or recreate database with current .sql file. (If this fails there's duplicate entries, either fix them manually or start over with a fresh database. Starting with v1.0.1 errors like this should not be possible anymore.)
+  * Run "ALTER TABLE `activity_intraday` ADD UNIQUE(`time`);" or recreate database with current .sql file. (If this fails there's duplicate entries, either fix them manually or start over with a fresh database. Starting with v1.1.0 errors like this should not be possible anymore.)
   * Create new config from config.sample.js (or insert changes into existing config, lines 13, 39 and 40 are different. Storing of json files is now optional.)
 
 ##Usage
@@ -30,7 +30,7 @@ You'll need to create your own Fitbit app for this but it only takes a few minut
 3. fitjunction will periodically update the database. After a few hours or days it will have reached the current day and keep updating the current day as new data is added on the Fitbit website.
 
 ##Known issues
-There might still be issues that can lead to the download of single days being aborted but as of version 1.0.1 the mysql module utilizes transactions to ensure database consistency in case of unexpected errors.
+There might still be issues that can lead to the download of single days being aborted but as of version 1.1.0 the mysql module utilizes transactions to ensure database consistency in case of unexpected errors.
 
 ##Planned features
 Capability to run as a background service.
