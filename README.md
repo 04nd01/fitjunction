@@ -30,7 +30,7 @@ You'll need to create your own Fitbit app for this but it only takes a few minut
 3. fitjunction will periodically update the database. After a few hours or days it will have reached the current day and keep updating the current day as new data is added on the Fitbit website.
 
 ##Known issues
-There might still be issues that can lead to the download of single days being aborted but as of version 1.1.0 the mysql module utilizes transactions to ensure database consistency in case of unexpected errors.
+I've observed a few cases where processing will stop and Fitjunction needs to be manually restarted and haven't tracked down the cause yet but as of version 1.1.0 the mysql module utilizes transactions to ensure database consistency in case of unexpected errors.
 
 ##Planned features
 Capability to run as a background service.
