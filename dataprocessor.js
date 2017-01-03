@@ -28,10 +28,10 @@ function retrieveData() {
           };
         }
         var itemList = [processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')];
-        //var itemList = [processItem('sleep')]; // testing
+        // var itemList = [processItem('hr'), processItem('activity')]; // testing
         Promise.all(itemList)
-        .then(() => { abortPoint(quitFlag, processingFlag); })
         .then(() => { log.info('Work unit processed. Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
+        .then(() => { abortPoint(quitFlag, processingFlag); })
         .catch(function(err) { processingFlag = false; reject(err); return; });
         fulfill();
       });
@@ -41,7 +41,7 @@ function retrieveData() {
   else {
     if(processingFlag) log.warn('retrieveData() is already running.');
     abortPoint(quitFlag, processingFlag)
-    .catch(function(err) { log.error(err); });
+    .catch(log.error);
   }
 };
 
@@ -55,12 +55,12 @@ function abortPoint(quit, processing) {
       .then(() => process.exit(0))
       .catch(function(err) { log.error(err); process.exit(1); });
     }
-    else log.info('Exit requested but tasks are still running. fitjunction will shutdown after tasks are finished.');
+    else { log.info('Exit requested but tasks are still running. Fitjunction will shutdown after tasks are finished.'); Promise.resolve(); }
   });
 };
 
-function setQuitFlag(value) {
-  quitFlag = value;
+function setQuitFlag() {
+  quitFlag = true;
 };
 
 function processItem(dataType) {
@@ -68,17 +68,17 @@ function processItem(dataType) {
     case 'fat':
       return fitbitConnector.apiRequest('body/log/fat/date/' + completeness.body_fat.startDay.format('YYYY-MM-DD') + '.json')
       .then(fitbitDataWriter)
-      .catch(function(err) { log.error(err); });
+      .catch(log.error);
       break;
     case 'weight':
       return fitbitConnector.apiRequest('body/log/weight/date/' + completeness.weight.startDay.format('YYYY-MM-DD') + '.json')
       .then(fitbitDataWriter)
-      .catch(function(err) { log.error(err); });
+      .catch(log.error);
       break;
     case 'hr':
       return fitbitConnector.apiRequest('activities/heart/date/' + completeness.hr_intraday.startDay.format('YYYY-MM-DD') + '/1d/1sec.json')
       .then(fitbitDataWriter)
-      .catch(function(err) { log.error(err); });
+      .catch(log.error);
       break;
     case 'activity':
       let getActivities = [
@@ -99,12 +99,12 @@ function processItem(dataType) {
         });
       })
       .then(fitbitDataWriter)
-      .catch(function(err) { log.error(err); });
+      .catch(log.error);
       break;
     case 'sleep':
       return fitbitConnector.apiRequest('sleep/date/' + completeness.sleep.startDay.format('YYYY-MM-DD') + '.json')
       .then(fitbitDataWriter)
-      .catch(function(err) { log.error(err); });
+      .catch(log.error);
       break;
     default:
       log.error('unknown data type requested');
@@ -112,16 +112,16 @@ function processItem(dataType) {
   }
 };
 
-function updateCompleteness(tableName, currentEntry) {
-  if (currentEntry == null) log.info('No "' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ', updating completeness table.');
+function updateCompleteness(tableName, currentEntry, connection) {
+  if (currentEntry == 'false') log.info('No "' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ', updating completeness table.');
   else log.info('"' + tableName + '" data for ' + completeness[tableName].startDay.format('YYYY-MM-DD') + ' written, updating completeness table.');
-  if (completeness[tableName].startDay < completeness[tableName].currentDay) return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].nextDay.format('YYYY-MM-DD'), tableName]]);
+  if (completeness[tableName].startDay < completeness[tableName].currentDay) return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].nextDay.format('YYYY-MM-DD'), tableName]], connection);
   else
   {
-    if (currentEntry == null) return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].currentDay.format('YYYY-MM-DD'), tableName]]);
+    if (currentEntry == 'false') return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [completeness[tableName].currentDay.format('YYYY-MM-DD'), tableName]], connection);
     else {
       log.debug('Setting completeness to ' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + ' for table ' + tableName);
-      return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry.format('YYYY-MM-DD HH:mm:ss'), tableName]]);
+      return mysql.query(['UPDATE completeness SET time = ? WHERE table_name = ?', [currentEntry.format('YYYY-MM-DD HH:mm:ss'), tableName]], connection);
     }
   }
 };
@@ -129,8 +129,9 @@ function updateCompleteness(tableName, currentEntry) {
 function fitbitDataWriter(result) {
   switch(Object.keys(result)[0]) {
     case 'fat':
+      log.verbose('Start processing body fat data.');
       let fat = result['fat'];
-      if (Object.keys(fat).length == 0) return updateCompleteness('body_fat');
+      if (Object.keys(fat).length == 0) return updateCompleteness('body_fat','false');
       else {
         let rows = [];
         let newestEntry = moment(completeness.body_fat.startTime);
@@ -144,13 +145,20 @@ function fitbitDataWriter(result) {
           }
         });
         let allRows = rows.join(', ');
-        return  mysql.query(['INSERT INTO body_fat (time, fat) VALUES ' + allRows])
-        .then(() => updateCompleteness('body_fat', newestEntry));
+        return mysql.startTransaction()
+        .then(function(connection) {
+          return mysql.query(['INSERT INTO body_fat (time, fat) VALUES ' + allRows], connection)
+          .then(() => updateCompleteness('body_fat', newestEntry, connection))
+          .then(() => mysql.commit(connection))
+          .catch((err) => mysql.rollback(connection, err));
+        })
+        .catch(log.error);
       }
       break;
     case 'weight':
+      log.verbose('Start processing weight data.');
       let weight = result['weight'];
-      if (Object.keys(weight).length == 0) return updateCompleteness('weight');
+      if (Object.keys(weight).length == 0) return updateCompleteness('weight','false');
       else {
         let rows = [];
         let newestEntry = moment(completeness.weight.startTime);
@@ -164,16 +172,22 @@ function fitbitDataWriter(result) {
           }
         });
         let allRows = rows.join(', ');
-        return mysql.query(['INSERT INTO weight (time, weight, bmi) VALUES ' + allRows])
-        .then(() => updateCompleteness('weight', newestEntry));
+        return mysql.startTransaction()
+        .then(function(connection) {
+          return mysql.query(['INSERT INTO weight (time, weight, bmi) VALUES ' + allRows], connection)
+          .then(() => updateCompleteness('weight', newestEntry, connection))
+          .then(() => mysql.commit(connection))
+          .catch((err) => mysql.rollback(connection, err));
+        })
+        .catch(log.error);
       }
       break;
     case 'activities-heart':
+      log.verbose('Start processing hr data.');
       let restingHeartRate = result['activities-heart'][0]['value']['restingHeartRate'];  // value might still be undefined even if there's Intraday Data
       let heartRateIntraday = result['activities-heart-intraday']['dataset'];
-      if (Object.keys(heartRateIntraday).length == 0) return updateCompleteness('hr_intraday');
+      if (Object.keys(heartRateIntraday).length == 0) return updateCompleteness('hr_intraday','false');
       else {
-        if(restingHeartRate) mysql.query(['INSERT INTO hr_resting (date, hr) VALUES (?, ?) ON DUPLICATE KEY UPDATE hr = ?', [completeness.hr_intraday.startDay.format('YYYY-MM-DD'), restingHeartRate, restingHeartRate]]).catch(function(err) { reject(err); return; });
         let rows = [];
         let currentEntry;
         if(completeness.hr_intraday.startTime.get('h')+completeness.hr_intraday.startTime.get('m')+completeness.hr_intraday.startTime.get('s') == 0) {
@@ -185,8 +199,18 @@ function fitbitDataWriter(result) {
           if (currentEntry > completeness.hr_intraday.startTime) rows.push('("' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + '", "' + heartRateIntraday[key]['value'] + '")');
         });
         let allRows = rows.join(', ');
-        return mysql.query(['INSERT INTO hr_intraday (time, hr) VALUES ' + allRows])
-        .then(() => updateCompleteness('hr_intraday', currentEntry));
+        return mysql.startTransaction()
+        .then(function(connection) {
+          return mysql.query(['INSERT INTO hr_intraday (time, hr) VALUES ' + allRows], connection)
+          .then(() => {
+            if(restingHeartRate) return mysql.query(['INSERT INTO hr_resting (date, hr) VALUES (?, ?) ON DUPLICATE KEY UPDATE hr = ?', [completeness.hr_intraday.startDay.format('YYYY-MM-DD'), restingHeartRate, restingHeartRate]], connection);
+            else return Promise.resolve();
+          })
+          .then(() => updateCompleteness('hr_intraday', currentEntry, connection))
+          .then(() => mysql.commit(connection))
+          .catch((err) => mysql.rollback(connection, err));
+        })
+        .catch(log.error);
       }
       break;
     case 'steps':
@@ -206,6 +230,7 @@ function fitbitDataWriter(result) {
           + result.calories[key]['level'] + '")');
         }
       });
+      log.debug('*** After activity loop');
       if (rows.length == 0) return updateCompleteness('activity_intraday', currentEntry);
       else {
         if (completeness.activity_intraday.startDay == completeness.activity_intraday.currentDay)
@@ -217,25 +242,31 @@ function fitbitDataWriter(result) {
           rows.splice(-1,1);
         }
         let allRows = rows.join(', ');
-        return mysql.query(['INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows])
-        .then(() => updateCompleteness('activity_intraday', currentEntry));
+        return mysql.startTransaction()
+        .then(function(connection) {
+          return mysql.query(['INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows], connection)
+          .then(() => updateCompleteness('activity_intraday', currentEntry, connection))
+          .then(() => mysql.commit(connection))
+          .catch((err) => mysql.rollback(connection, err));
+        })
+        .catch(log.error);
       }
-      fulfill();
       break;
     case 'sleep':
+      log.verbose('Start processing sleep data.');
       let sleep = result['sleep'];
-      if (Object.keys(sleep).length == 0) return updateCompleteness('sleep');
+      if (Object.keys(sleep).length == 0) return updateCompleteness('sleep','false');
       else {
         let currentEntry;
         let insertSleep = [];
-        function sleepLog(key) {
+        function sleepLog(key, connection) {
           let isMainSleep, startTime, endTime;
           if (sleep[key]['isMainSleep'] == true) isMainSleep = 1;
           else isMainSleep = 0;
           startTime = moment(sleep[key]['startTime']);
           endTime = moment(sleep[key]['startTime']);
           endTime.add(sleep[key]['timeInBed'], 'minutes');
-          return mysql.query(['INSERT INTO sleep (is_main_sleep, efficiency, start_time, end_time, minutes_to_sleep, minutes_awake, minutes_after_wake, awake_count, awake_duration, restless_count, restless_duration, minutes_in_bed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [isMainSleep, sleep[key]['efficiency'], startTime.format('YYYY-MM-DD HH:mm:ss'), endTime.format('YYYY-MM-DD HH:mm:ss'), sleep[key]['minutesToFallAsleep'], sleep[key]['minutesAwake'], sleep[key]['minutesAfterWakeup'], sleep[key]['awakeCount'], sleep[key]['awakeDuration'], sleep[key]['restlessCount'], sleep[key]['restlessDuration'], sleep[key]['timeInBed']]])
+          return mysql.query(['INSERT INTO sleep (is_main_sleep, efficiency, start_time, end_time, minutes_to_sleep, minutes_awake, minutes_after_wake, awake_count, awake_duration, restless_count, restless_duration, minutes_in_bed) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [isMainSleep, sleep[key]['efficiency'], startTime.format('YYYY-MM-DD HH:mm:ss'), endTime.format('YYYY-MM-DD HH:mm:ss'), sleep[key]['minutesToFallAsleep'], sleep[key]['minutesAwake'], sleep[key]['minutesAfterWakeup'], sleep[key]['awakeCount'], sleep[key]['awakeDuration'], sleep[key]['restlessCount'], sleep[key]['restlessDuration'], sleep[key]['timeInBed']]], connection)
           .then(function(result) {
             let rows = [];
             let minuteData = sleep[key]['minuteData'];
@@ -250,18 +281,25 @@ function fitbitDataWriter(result) {
             let allRows = rows.join(', ');
             return Promise.resolve(['INSERT INTO sleep_by_minute (time, id_sleep, id_sleep_states) VALUES ' + allRows]);
           })
-          .then(mysql.query);
+          .then((query) => mysql.query(query, connection))
+          .catch((err) => mysql.rollback(connection, err));
         };
-        Object.keys(sleep).forEach(function(key) {
-          currentEntry = moment(sleep[key]['startTime']).add(sleep[key]['timeInBed'], 'minutes'); // using endTime because the start time of the sleep will usually be the day before
-          if (currentEntry > completeness.sleep.startTime) insertSleep.push(sleepLog(key));
-        });
-        return Promise.all(insertSleep)
-        .then(() => updateCompleteness('sleep', currentEntry));
+        return mysql.startTransaction()
+        .then(function(connection) {
+          Object.keys(sleep).forEach(function(key) {
+            currentEntry = moment(sleep[key]['startTime']).add(sleep[key]['timeInBed'], 'minutes'); // using endTime because the start time of the sleep will usually be the day before
+            if (currentEntry > completeness.sleep.startTime) insertSleep.push(sleepLog(key, connection));
+          });
+          return Promise.all(insertSleep)
+          .then(() => updateCompleteness('sleep', currentEntry, connection))
+          .then(() => mysql.commit(connection))
+          .catch((err) => mysql.rollback(connection, err));
+        })
+        .catch(log.error);
       }
       break;
     default:
-      Promise.reject("can't recognize data type of API result");
+      Promise.reject('Data type of API result not recognized.');
   }
 };
 

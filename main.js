@@ -51,8 +51,8 @@ stdin.setEncoding('utf8');
 stdin.on('data', function(key) {
   // "q", "Q", "ctrl-c"
   if (key === '\u0071' || key === '\u0051' || key === '\u0003') {
-    dataProcessor.setQuitFlag(true);
-    dataProcessor.retrieveData();
+    dataProcessor.setQuitFlag();
+    setTimeout(dataProcessor.retrieveData, 100);  
   }
   // "r", "R"
   else if (key === '\u0072' || key === '\u0052') {
@@ -61,7 +61,7 @@ stdin.on('data', function(key) {
 });
 
 // run once at start and then every x minutes
-setTimeout(dataProcessor.retrieveData,100);
+setTimeout(dataProcessor.retrieveData,100); // waiting a bit for the initial tokenRefresh to finish
 cron.schedule('*/' + config.REQUEST_FREQUENCY + ' * * * *', function(){
   dataProcessor.retrieveData();
 });
