@@ -19,7 +19,7 @@ You'll need to create your own Fitbit app for this but it only takes a few minut
 
 ##Updating
 (see package.json for version number)
-###1.0.0 > 1.1.0
+###1.0.0 > 1.1.0 and later
   * Overwrite files
   * Run "ALTER TABLE `activity_intraday` ADD UNIQUE(`time`);" or recreate database with current .sql file. (If this fails there's duplicate entries, either fix them manually or start over with a fresh database. Starting with v1.1.0 errors like this should not be possible anymore.)
   * Create new config from config.sample.js (or insert changes into existing config, lines 13, 39 and 40 are different. Storing of json files is now optional.)
