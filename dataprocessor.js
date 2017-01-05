@@ -201,8 +201,12 @@ function fitbitDataWriter(result) {
         let allRows = rows.join(', ');
         return mysql.startTransaction()
         .then(function(connection) {
-          return mysql.query(['INSERT INTO hr_intraday (time, hr) VALUES ' + allRows], connection)
-          .then(() => {
+          return Promise.resolve()
+          .then(() => function(connection) {
+            if(allRows.length > 0) return mysql.query(['INSERT INTO hr_intraday (time, hr) VALUES ' + allRows], connection);
+            else return Promise.resolve();
+          })
+          .then(() => function(connection) {
             if(restingHeartRate) return mysql.query(['INSERT INTO hr_resting (date, hr) VALUES (?, ?) ON DUPLICATE KEY UPDATE hr = ?', [completeness.hr_intraday.startDay.format('YYYY-MM-DD'), restingHeartRate, restingHeartRate]], connection);
             else return Promise.resolve();
           })
@@ -216,12 +220,14 @@ function fitbitDataWriter(result) {
     case 'steps':
       let rows = [];
       let currentEntry = moment(completeness.activity_intraday.startTime);
-      let lastKey;
+      let lastWrittenEntry = moment(completeness.activity_intraday.startTime);
+      let lastKey = 0;
       Object.keys(result.steps).forEach(function(key) {
         currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[key]['time']);
         if (currentEntry > completeness.activity_intraday.startTime && result.steps[key]['value'] > 0)
         {
           lastKey = key;
+          lastWrittenEntry = moment(currentEntry);
           rows.push('("' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + '", "'
           + result.steps[key]['value'] + '", "'
           + result.distance[key]['value'] + '", "'
@@ -231,21 +237,21 @@ function fitbitDataWriter(result) {
         }
       });
       log.debug('*** After activity loop');
-      if (rows.length == 0) return updateCompleteness('activity_intraday', currentEntry);
+      if (rows.length == 0) return updateCompleteness('activity_intraday', lastWrittenEntry);
       else {
         if (completeness.activity_intraday.startDay == completeness.activity_intraday.currentDay)
         {
           // reset currentEntry to the minute before the last row and remove last row. This is to make sure only complete minutes are written to the db
           // only if the day isn't over yet
-          currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[lastKey]['time']);
-          currentEntry = moment(currentEntry).subtract(30, 'seconds');
+          lastWrittenEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[lastKey]['time']);
+          lastWrittenEntry = moment(lastWrittenEntry).subtract(30, 'seconds');
           rows.splice(-1,1);
         }
         let allRows = rows.join(', ');
         return mysql.startTransaction()
         .then(function(connection) {
           return mysql.query(['INSERT INTO activity_intraday (time, steps, distance, floors, elevation, activity_level) VALUES ' + allRows], connection)
-          .then(() => updateCompleteness('activity_intraday', currentEntry, connection))
+          .then(() => updateCompleteness('activity_intraday', lastWrittenEntry, connection))
           .then(() => mysql.commit(connection))
           .catch((err) => mysql.rollback(connection, err));
         })
