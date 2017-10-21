@@ -18,8 +18,9 @@ You'll need to create your own Fitbit app for this but it only takes a few minut
 2. Fill out config.sample.js and copy it to <fitjunction-root-directory>\\config.js. Make sure the MySQL user you enter in the config has access to the qsaggregator database.
 
 ## Updating
-(see package.json for version number)
-### 1.0.0 > 1.1.0 and later
+Unless otherwise stated download newest [release](https://github.com/04nd01/fitjunction/releases) and overwrite old files.
+
+### Updating from 1.0.0 (see package.json for version number)
   * Overwrite files
   * Run "ALTER TABLE `activity_intraday` ADD UNIQUE(`time`);" or recreate database with current .sql file. (If this fails there's duplicate entries, either fix them manually or start over with a fresh database. Starting with v1.1.0 errors like this should not be possible anymore.)
   * Create new config from config.sample.js (or insert changes into existing config, lines 13, 39 and 40 are different. Storing of json files is now optional.)
