@@ -28,7 +28,7 @@ function retrieveData() {
           };
         }
         var itemList = [processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')];
-        // var itemList = [processItem('hr'), processItem('activity')]; // testing
+        //var itemList = [processItem('hr')]; // testing
         Promise.all(itemList)
         .then(() => { log.info('Work unit processed. Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
         .then(() => { abortPoint(quitFlag, processingFlag); })
@@ -201,15 +201,18 @@ function fitbitDataWriter(result) {
         let allRows = rows.join(', ');
         return mysql.startTransaction()
         .then(function(connection) {
-          return Promise.resolve()
-          .then(() => function(connection) {
+          function writeIntraday(connection) {
             if(allRows.length > 0) return mysql.query(['INSERT INTO hr_intraday (time, hr) VALUES ' + allRows], connection);
             else return Promise.resolve();
-          })
-          .then(() => function(connection) {
+          };
+          function writeResting(connection) {
             if(restingHeartRate) return mysql.query(['INSERT INTO hr_resting (date, hr) VALUES (?, ?) ON DUPLICATE KEY UPDATE hr = ?', [completeness.hr_intraday.startDay.format('YYYY-MM-DD'), restingHeartRate, restingHeartRate]], connection);
             else return Promise.resolve();
-          })
+          };
+
+          return Promise.resolve()
+          .then(() => writeIntraday(connection))
+          .then(() => writeResting(connection))
           .then(() => updateCompleteness('hr_intraday', currentEntry, connection))
           .then(() => mysql.commit(connection))
           .catch((err) => mysql.rollback(connection, err));

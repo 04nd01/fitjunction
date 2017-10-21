@@ -45,6 +45,7 @@ function connect() {
           code: query['code']
         }
       }
+      log.debug('Exchange authorization code for access and refresh token.');
       request(options, function(err, res, body) {
         if (!err) {
           if (res.statusCode == 200) {
