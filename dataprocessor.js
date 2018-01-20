@@ -28,7 +28,7 @@ function retrieveData() {
           };
         }
         var itemList = [processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')];
-        //var itemList = [processItem('hr')]; // testing
+        // processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')
         Promise.all(itemList)
         .then(() => { log.info('Work unit processed. Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
         .then(() => { abortPoint(quitFlag, processingFlag); })
@@ -196,7 +196,8 @@ function fitbitDataWriter(result) {
         }
         Object.keys(heartRateIntraday).forEach(function(key) {
           currentEntry = moment(completeness.hr_intraday.startDay.format('YYYY-MM-DD') + ' ' + heartRateIntraday[key]['time']);
-          if (currentEntry > completeness.hr_intraday.startTime) rows.push('("' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + '", "' + heartRateIntraday[key]['value'] + '")');
+          if(currentEntry > completeness.hr_intraday.startTime && currentEntry.format('HH:mm:ss') == heartRateIntraday[key]['time']) rows.push('("' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + '", "' + heartRateIntraday[key]['value'] + '")'); // second condition of if detects if time has been adjusted for begin of DST
+          else if(currentEntry.format('HH:mm:ss') != heartRateIntraday[key]['time']) log.debug('Skipping over DST transition (hr_intraday time: ' + heartRateIntraday[key]['time'] + ')');
         });
         let allRows = rows.join(', ');
         return mysql.startTransaction()
@@ -227,7 +228,7 @@ function fitbitDataWriter(result) {
       let lastKey = 0;
       Object.keys(result.steps).forEach(function(key) {
         currentEntry = moment(completeness.activity_intraday.startDay.format('YYYY-MM-DD') + ' ' + result.steps[key]['time']);
-        if (currentEntry > completeness.activity_intraday.startTime && result.steps[key]['value'] > 0)
+        if (currentEntry > completeness.activity_intraday.startTime && result.steps[key]['value'] > 0 && currentEntry.format('HH:mm:ss') == result.steps[key]['time'])  // third condition of if detects if time has been adjusted for begin of DST
         {
           lastKey = key;
           lastWrittenEntry = moment(currentEntry);
@@ -238,6 +239,7 @@ function fitbitDataWriter(result) {
           + result.elevation[key]['value'] + '", "'
           + result.calories[key]['level'] + '")');
         }
+        else if(currentEntry.format('HH:mm:ss') != result.steps[key]['time']) log.debug('Skipping over DST transition (activity_intraday time: ' + result.steps[key]['time'] + ')');
       });
       log.debug('*** After activity loop');
       if (rows.length == 0) return updateCompleteness('activity_intraday', lastWrittenEntry);
@@ -290,8 +292,8 @@ function fitbitDataWriter(result) {
             let allRows = rows.join(', ');
             return Promise.resolve(['INSERT INTO sleep_by_minute (time, id_sleep, id_sleep_states) VALUES ' + allRows]);
           })
-          .then((query) => mysql.query(query, connection))
-          .catch((err) => mysql.rollback(connection, err));
+          .then((query) => mysql.query(query, connection));
+          // No catch to prevent mysql.rollback from being called twice on the same connection
         };
         return mysql.startTransaction()
         .then(function(connection) {
