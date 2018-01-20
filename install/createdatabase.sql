@@ -18,6 +18,14 @@ CREATE SCHEMA IF NOT EXISTS `qsaggregator` DEFAULT CHARACTER SET utf8 ;
 USE `qsaggregator` ;
 
 -- -----------------------------------------------------
+-- Table `qsaggregator`.`request_history`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `qsaggregator`.`request_history` (
+  `time` DATETIME NOT NULL,
+  PRIMARY KEY (`time`))
+ENGINE = InnoDB
+
+-- -----------------------------------------------------
 -- Table `qsaggregator`.`weight`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `qsaggregator`.`weight` (

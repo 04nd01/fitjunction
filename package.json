@@ -4,7 +4,7 @@
   "description": "Pulls activity data from fitbit and stores it in a MySQL database.",
   "main": "main.js",
   "dependencies": {
-    "moment": "^2.19.1",
+    "moment": "^2.20.1",
     "mysql": "^2.15.0",
     "node-cron": "^1.2.1",
     "request": "^2.83.0",

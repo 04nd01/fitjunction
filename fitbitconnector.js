@@ -122,28 +122,36 @@ function updateTokenStorage() {
 
 function apiRequest(resourcePath) {
   return new Promise(function(fulfill, reject){
-    let requestUrl = config.FITBIT_RESOURCE_BASE_URL + 'user/-/' + resourcePath;
-    log.verbose('Fetching: ' + requestUrl);
-    var options = {
-      url: requestUrl,
-      method: 'GET',
-      headers: {
-        'Authorization': 'Bearer ' + accessToken
-      }
-    }
-    request(options, function(err, res, body) {
-      if (!err) {
-        if (res.statusCode == 200) {
-          if(config.STORE_JSON == true) {
-            fs.writeFile('./result_history/' + resourcePath.replace(/\//g, '_'), body, function(err) { // write every request to file system as reference for debugging and backup of original fitbit data
-              if (err) throw err;
-            });
+    fs.readFile('./result_history/' + resourcePath.replace(/\//g, '_'), 'utf8', function (err, data) {
+        if(err) {
+          let requestUrl = config.FITBIT_RESOURCE_BASE_URL + 'user/-/' + resourcePath;
+          log.verbose('Fetching: ' + requestUrl);
+          var options = {
+            url: requestUrl,
+            method: 'GET',
+            headers: {
+              'Authorization': 'Bearer ' + accessToken
+            }
           }
-          fulfill(JSON.parse(body));
+          request(options, function(err, res, body) {
+            if (!err) {
+              if (res.statusCode == 200) {
+                if(config.STORE_JSON == true) {
+                  fs.writeFile('./result_history/' + resourcePath.replace(/\//g, '_'), body, function(err) { // write every request to file system as reference for debugging and backup of original fitbit data
+                    if (err) throw err;
+                  });
+                }
+                fulfill(JSON.parse(body));
+              }
+              else reject({'Statuscode': res.statusCode, 'Options:': options});
+            }
+            else reject({'Error': err, 'Options:': options});
+          });
         }
-        else reject({'Statuscode': res.statusCode, 'Options:': options});
-      }
-      else reject({'Error': err, 'Options:': options});
+        else {
+          log.verbose('Body fat data for ' + completeness.body_fat.startDay.format('YYYY-MM-DD') + ' loaded from result history.');
+          fulfill(JSON.parse(data));
+        }
     });
   });
 }
