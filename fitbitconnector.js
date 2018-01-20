@@ -149,7 +149,7 @@ function apiRequest(resourcePath) {
           });
         }
         else {
-          log.verbose('Body fat data for ' + completeness.body_fat.startDay.format('YYYY-MM-DD') + ' loaded from result history.');
+          log.verbose(resourcePath.replace(/\//g, '_') + ' loaded from result history.');
           fulfill(JSON.parse(data));
         }
     });

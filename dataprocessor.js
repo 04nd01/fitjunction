@@ -28,7 +28,7 @@ function retrieveData() {
           };
         }
         var itemList = [processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')];
-        //var itemList = [processItem('hr')]; // testing
+        // processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')
         Promise.all(itemList)
         .then(() => { log.info('Work unit processed. Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
         .then(() => { abortPoint(quitFlag, processingFlag); })
@@ -292,8 +292,8 @@ function fitbitDataWriter(result) {
             let allRows = rows.join(', ');
             return Promise.resolve(['INSERT INTO sleep_by_minute (time, id_sleep, id_sleep_states) VALUES ' + allRows]);
           })
-          .then((query) => mysql.query(query, connection))
-          .catch((err) => mysql.rollback(connection, err));
+          .then((query) => mysql.query(query, connection));
+          // No catch to prevent mysql.rollback from being called twice on the same connection
         };
         return mysql.startTransaction()
         .then(function(connection) {
