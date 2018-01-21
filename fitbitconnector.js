@@ -3,6 +3,7 @@ var http = require('http');
 var url = require('url');
 var request = require('request');
 var fs = require('fs');
+var moment = require('moment');
 var config = require('./config.js');
 
 // Tokens are accessed through global variables everywhere. token.json is only read at start and written when tokens are created/updated.
@@ -137,7 +138,7 @@ function apiRequest(resourcePath) {
             if (!err) {
               if (res.statusCode == 200) {
                 if(config.STORE_JSON == true) {
-                  fs.writeFile('./result_history/' + resourcePath.replace(/\//g, '_'), body, function(err) { // write every request to file system as reference for debugging and backup of original fitbit data
+                  fs.writeFile('./result_history/' + resourcePath.replace(/\//g, '_').replace(moment().format('YYYY-MM-DD'), 'temporary'), body, function(err) { // write every request to file system as reference for debugging and backup of original fitbit data
                     if (err) throw err;
                   });
                 }
