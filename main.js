@@ -13,7 +13,7 @@ log.configure({
       }
     }),
     new (log.transports.File)({
-      filename: 'fitjunction.log',
+      filename: './config/fitjunction.log',
       maxsize: 5242880, //5MB
       maxFiles: 5,
       json: false,
@@ -33,7 +33,7 @@ log.configure({
 var fs = require('fs');
 var moment = require('moment');
 var cron = require('node-cron');
-var config = require('./config.js');
+var config = require('./config/config.js');
 var fitbitConnector = require('./fitbitconnector.js');
 var dataProcessor = require('./dataprocessor.js');
 var mysql = require('./mysql.js');

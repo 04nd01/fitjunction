@@ -4,9 +4,7 @@ Desktop.ini
 $RECYCLE.BIN/
 
 # Private files
-config.js
 test.js
-token.json
-*.log
 node_modules/
 sample files/
+config/

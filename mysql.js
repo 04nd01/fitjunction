@@ -1,5 +1,5 @@
 var log = require('winston');
-var config = require('./config.js');
+var config = require('./config/config.js');
 var mysql = require('mysql');
 var pool;
 
