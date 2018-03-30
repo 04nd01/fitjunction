@@ -30,7 +30,7 @@ function retrieveData() {
         var itemList = [processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')];
         // processItem('fat'), processItem('weight'), processItem('hr'), processItem('activity'), processItem('sleep')
         Promise.all(itemList)
-        .then(() => { log.info('Work unit processed. Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
+        .then(() => { log.info('Work unit processed.'); if (process.argv[2] != 'notinteractive') log.info('Press "r" to retrieve another day or "q" to quit.'); processingFlag = false; })
         .then(() => { abortPoint(quitFlag, processingFlag); })
         .catch(function(err) { processingFlag = false; reject(err); return; });
         fulfill();

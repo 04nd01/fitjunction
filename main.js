@@ -43,22 +43,24 @@ log.verbose('fitjunction initialized');
 
 fitbitConnector.connect();
 
-var stdin = process.stdin;
-// without this, we would only get streams once enter is pressed
-stdin.setRawMode(true);
-stdin.resume();
-stdin.setEncoding('utf8');
-stdin.on('data', function(key) {
-  // "q", "Q", "ctrl-c"
-  if (key === '\u0071' || key === '\u0051' || key === '\u0003') {
-    dataProcessor.setQuitFlag();
-    setTimeout(dataProcessor.retrieveData, 100);
-  }
-  // "r", "R"
-  else if (key === '\u0072' || key === '\u0052') {
-    dataProcessor.retrieveData();
-  }
-});
+if (process.argv[2] != 'notinteractive') { // Command line parameter 'notinteractive' used to run in docker container
+  var stdin = process.stdin;
+  // without this, we would only get streams once enter is pressed
+  stdin.setRawMode(true);
+  stdin.resume();
+  stdin.setEncoding('utf8');
+  stdin.on('data', function(key) {
+    // "q", "Q", "ctrl-c"
+    if (key === '\u0071' || key === '\u0051' || key === '\u0003') {
+      dataProcessor.setQuitFlag();
+      setTimeout(dataProcessor.retrieveData, 100);
+    }
+    // "r", "R"
+    else if (key === '\u0072' || key === '\u0052') {
+      dataProcessor.retrieveData();
+    }
+  });
+}
 
 // run once at start and then every x minutes
 setTimeout(dataProcessor.retrieveData,1000); // waiting a bit for the initial tokenRefresh to finish

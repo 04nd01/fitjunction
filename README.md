@@ -12,18 +12,13 @@ You'll need to create your own Fitbit app for this but it only takes a few minut
   * Callback URL: The URL should lead to the machine where you're running fitjunction, if your machine isn't reachable from the internet you can get around this by entering a URL that doesn't exist and changing that in your browser to http://localhost/ during authentication.
   * Default Access Type: Read-Only
 
-## Installation
+##  Docker deployment
+working on it
+
+##  Manual Installation
 1. Download this repository and run "npm install" in root directory.
-1. Execute createdatabase.sql on your MySQL server to create the qsaggregator db and fill it with default values.
-2. Fill out config.sample.js and copy it to <fitjunction-root-directory>\\config.js. Make sure the MySQL user you enter in the config has access to the qsaggregator database.
-
-## Updating
-Unless otherwise stated download newest [release](https://github.com/04nd01/fitjunction/releases) and overwrite old files.
-
-### Updating from 1.0.0 (see package.json for version number)
-  * Overwrite files
-  * Run "ALTER TABLE `activity_intraday` ADD UNIQUE(`time`);" or recreate database with current .sql file. (If this fails there's duplicate entries, either fix them manually or start over with a fresh database. Starting with v1.1.0 errors like this should not be possible anymore.)
-  * Create new config from config.sample.js (or insert changes into existing config, lines 13, 39 and 40 are different. Storing of json files is now optional.)
+1. Execute install/createdatabase.sql on your MySQL server to create the qsaggregator db and fill it with default values.
+2. Fill out install/config.sample.js and copy it to <fitjunction-root-directory>/config/config.js. Make sure the MySQL user you enter in the config has access to the qsaggregator database.
 
 ## Usage
 1. Run "node main.js" in root directory.

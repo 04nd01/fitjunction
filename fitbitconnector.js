@@ -20,7 +20,7 @@ try {
 }
 catch (e) {
   if (e instanceof Error && e.code === 'MODULE_NOT_FOUND') {
-    log.warn('Token.json not found, visit http://localhost/?mode=auth to authorize.');
+    log.warn('Token.json not found, visit ' + config.FITBIT_REDIRECT_URL + '/?mode=auth to authorize.');
   } else {
     throw e;
   }
@@ -46,6 +46,7 @@ function connect() {
           code: query['code']
         }
       }
+      response.write('Sending token request. Check logs for result.');
       log.debug('Exchange authorization code for access and refresh token.');
       request(options, function(err, res, body) {
         if (!err) {
@@ -56,14 +57,15 @@ function connect() {
             refreshToken = data.refresh_token;
             userId = data.user_id;
             updateTokenStorage();
+            let expiresIn = Math.floor((accessTokenExpiry-Date.now())/1000);
+            log.info('Access token: ' + accessToken + '\nExpires in: ' + expiresIn + '\nRefresh token: ' + refreshToken + '\nUser ID: ' + userId);
           }
           else log.error({'Statuscode': res.statusCode, 'Options:': options});
         }
         else log.error({'Error': err, 'Options:': options});
       });
     } else {
-      let expiresIn = Math.floor((accessTokenExpiry-Date.now())/1000);
-      response.write('Access token: ' + accessToken + '\nExpires in: ' + expiresIn + '\nRefresh token: ' + refreshToken + '\nUser ID: ' + userId);
+      response.write('Nothing to see here');
     }
     response.end();
   }
@@ -105,7 +107,7 @@ function tokenRefresh() {
         else reject({'Error': err, 'Options:': options});
       });
     } else if (typeof accessToken !== 'undefined' && Date.now() <= (Number(accessTokenExpiry)-buffer)) fulfill();
-    else reject('Access token could not be renewed, visit http://localhost/?mode=auth to authorize.');
+    else reject('Access token could not be renewed, visit ' + config.FITBIT_REDIRECT_URL + '/?mode=auth to authorize.');
   });
 }
 
