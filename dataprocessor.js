@@ -1,6 +1,6 @@
 var log = require('winston');
 var moment = require('moment');
-var config = require('./config.js');
+var config = require('./config/config.js');
 var fitbitConnector = require('./fitbitconnector.js');
 var mysql = require('./mysql.js');
 var processingFlag = false;

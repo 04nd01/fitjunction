@@ -4,7 +4,7 @@ var url = require('url');
 var request = require('request');
 var fs = require('fs');
 var moment = require('moment');
-var config = require('./config.js');
+var config = require('./config/config.js');
 
 // Tokens are accessed through global variables everywhere. token.json is only read at start and written when tokens are created/updated.
 var accessToken;
@@ -12,7 +12,7 @@ var accessTokenExpiry;
 var refreshToken;
 var userId;
 try {
-  var tokenStorage = require('./token.json');
+  var tokenStorage = require('./config/token.json');
   accessToken = tokenStorage.accessToken;
   accessTokenExpiry = tokenStorage.accessTokenExpiry;
   refreshToken = tokenStorage.refreshToken;
@@ -116,7 +116,7 @@ function updateTokenStorage() {
     'refreshToken': refreshToken,
     'userId': userId
   })
-  fs.writeFile('./token.json', content, function(err) {
+  fs.writeFile('./config/token.json', content, function(err) {
     if (err) throw err;
   });
 }
