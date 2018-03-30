@@ -36,13 +36,7 @@ fourandone/fitjunction
 1. Execute install/createdatabase.sql on your MySQL server to create the qsaggregator db and fill it with default values.
 2. Fill out install/config.sample.js and copy it to <fitjunction-root-directory>/config/config.js. Make sure the MySQL user you enter in the config has access to the qsaggregator database.
 
-## Usage
+### Usage
 1. Run "node main.js" in root directory.
 2. Got to http://localhost/?mode=auth to start authorization.
 3. fitjunction will periodically update the database. After a few hours or days it will have reached the current day and keep updating the current day as new data is added on the Fitbit website.
-
-## Known issues
-I've observed a few cases where processing will stop and Fitjunction needs to be manually restarted and haven't tracked down the cause yet but as of version 1.1.0 the mysql module utilizes transactions to ensure database consistency in case of unexpected errors.
-
-## Planned features
-Capability to run as a background service.
