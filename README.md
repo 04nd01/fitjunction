@@ -13,7 +13,23 @@ You'll need to create your own Fitbit app for this but it only takes a few minut
   * Default Access Type: Read-Only
 
 ##  Docker deployment
-working on it
+
+### Requirements
+  * A MySQL server
+  * If you have multiple web applications running, a reverse proxy like nginx or traefik
+
+### Deploying the container
+1. create directories for config and the result_history.
+2. Execute install/createdatabase.sql on your MySQL server to create the qsaggregator db and fill it with default values.
+3. Fill out install/config.sample.js and copy it to <your-config-directory>/config.js. Make sure the MySQL user you enter in the config has access to the qsaggregator database.
+4. Run the container with the previously created directories mounted into it.
+
+```
+docker run -d -p 80:80 --name fitjunction \
+-v /opt/fitjunction/config:/fitjunction/config \
+-v /opt/fitjunction/result_history:/fitjunction/config \
+fourandone/fitjunction
+```
 
 ##  Manual Installation
 1. Download this repository and run "npm install" in root directory.
