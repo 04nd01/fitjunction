@@ -28,6 +28,7 @@ You'll need to create your own Fitbit app for this but it only takes a few minut
 docker run -d -p 80:80 --name fitjunction \
 -v /opt/fitjunction/config:/fitjunction/config \
 -v /opt/fitjunction/result_history:/fitjunction/config \
+-v /etc/localtime:/etc/localtime:ro \
 fourandone/fitjunction
 ```
 
