@@ -8,27 +8,27 @@ SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0;
 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='TRADITIONAL,ALLOW_INVALID_DATES';
 
 -- -----------------------------------------------------
--- Schema qsaggregator
+-- Schema fitjunction
 -- -----------------------------------------------------
 
 -- -----------------------------------------------------
--- Schema qsaggregator
+-- Schema fitjunction
 -- -----------------------------------------------------
-CREATE SCHEMA IF NOT EXISTS `qsaggregator` DEFAULT CHARACTER SET utf8 ;
-USE `qsaggregator` ;
+CREATE SCHEMA IF NOT EXISTS `fitjunction` DEFAULT CHARACTER SET utf8 ;
+USE `fitjunction` ;
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`request_history`
+-- Table `fitjunction`.`request_history`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`request_history` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`request_history` (
   `time` DATETIME NOT NULL,
   PRIMARY KEY (`time`))
-ENGINE = InnoDB
+ENGINE = InnoDB;
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`weight`
+-- Table `fitjunction`.`weight`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`weight` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`weight` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `time` DATETIME NOT NULL,
   `bmi` DOUBLE UNSIGNED NULL,
@@ -40,9 +40,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`hr_intraday`
+-- Table `fitjunction`.`hr_intraday`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`hr_intraday` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`hr_intraday` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `time` DATETIME NOT NULL,
   `hr` SMALLINT UNSIGNED NOT NULL,
@@ -53,9 +53,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`hr_resting`
+-- Table `fitjunction`.`hr_resting`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`hr_resting` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`hr_resting` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `date` DATE NOT NULL,
   `hr` SMALLINT UNSIGNED NOT NULL,
@@ -65,9 +65,9 @@ CREATE TABLE IF NOT EXISTS `qsaggregator`.`hr_resting` (
 ENGINE = InnoDB;
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`body_fat`
+-- Table `fitjunction`.`body_fat`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`body_fat` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`body_fat` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `time` DATETIME NOT NULL,
   `fat` DOUBLE UNSIGNED NULL,
@@ -78,9 +78,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`sleep`
+-- Table `fitjunction`.`sleep`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`sleep` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`sleep` (
   `id` SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `is_main_sleep` TINYINT(1) NOT NULL,
   `efficiency` TINYINT UNSIGNED NOT NULL,
@@ -102,9 +102,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`sleep_states`
+-- Table `fitjunction`.`sleep_states`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`sleep_states` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`sleep_states` (
   `id` TINYINT UNSIGNED NOT NULL,
   `name` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`id`),
@@ -114,9 +114,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`sleep_by_minute`
+-- Table `fitjunction`.`sleep_by_minute`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`sleep_by_minute` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`sleep_by_minute` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `id_sleep` SMALLINT UNSIGNED NOT NULL,
   `id_sleep_states` TINYINT UNSIGNED NOT NULL,
@@ -128,21 +128,21 @@ CREATE TABLE IF NOT EXISTS `qsaggregator`.`sleep_by_minute` (
   UNIQUE INDEX `time_UNIQUE` (`time` ASC),
   CONSTRAINT `id_sleep`
     FOREIGN KEY (`id_sleep`)
-    REFERENCES `qsaggregator`.`sleep` (`id`)
+    REFERENCES `fitjunction`.`sleep` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `id_sleep_states`
     FOREIGN KEY (`id_sleep_states`)
-    REFERENCES `qsaggregator`.`sleep_states` (`id`)
+    REFERENCES `fitjunction`.`sleep_states` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`activity_levels`
+-- Table `fitjunction`.`activity_levels`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`activity_levels` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`activity_levels` (
   `id` TINYINT UNSIGNED NOT NULL,
   `name` VARCHAR(255) NOT NULL,
   PRIMARY KEY (`id`),
@@ -152,9 +152,9 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`activity_intraday`
+-- Table `fitjunction`.`activity_intraday`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`activity_intraday` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`activity_intraday` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `time` DATETIME NOT NULL,
   `steps` MEDIUMINT UNSIGNED NOT NULL,
@@ -168,16 +168,16 @@ CREATE TABLE IF NOT EXISTS `qsaggregator`.`activity_intraday` (
   UNIQUE INDEX `time_UNIQUE` (`time` ASC),
   CONSTRAINT `activity_level`
     FOREIGN KEY (`activity_level`)
-    REFERENCES `qsaggregator`.`activity_levels` (`id`)
+    REFERENCES `fitjunction`.`activity_levels` (`id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `qsaggregator`.`completeness`
+-- Table `fitjunction`.`completeness`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `qsaggregator`.`completeness` (
+CREATE TABLE IF NOT EXISTS `fitjunction`.`completeness` (
   `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
   `table_name` VARCHAR(255) NOT NULL,
   `time` DATETIME NULL,

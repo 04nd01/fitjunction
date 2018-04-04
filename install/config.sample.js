@@ -4,7 +4,7 @@
 const MYSQL_HOST = '';
 const MYSQL_USER = '';
 const MYSQL_PASSWORD = '';
-const MYSQL_DB = 'qsaggregator';
+const MYSQL_DB = 'fitjunction';
 
 const FITBIT_REDIRECT_URL = ''; // Needs to point back at the server running the application. Needs to be the same as Callback URL in fitbit api settings https://dev.fitbit.com/
 const FITBIT_CLIENT_ID = '';
@@ -39,5 +39,6 @@ module.exports = {
   MYSQL_USER: MYSQL_USER,
   MYSQL_PASSWORD: MYSQL_PASSWORD,
   MYSQL_DB: MYSQL_DB,
-  STORE_JSON: STORE_JSON
+  STORE_JSON: STORE_JSON,
+  LOG_LEVEL: LOG_LEVEL
 };
