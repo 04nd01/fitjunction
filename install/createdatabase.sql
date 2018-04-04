@@ -23,7 +23,7 @@ USE `fitjunction` ;
 CREATE TABLE IF NOT EXISTS `fitjunction`.`request_history` (
   `time` DATETIME NOT NULL,
   PRIMARY KEY (`time`))
-ENGINE = InnoDB
+ENGINE = InnoDB;
 
 -- -----------------------------------------------------
 -- Table `fitjunction`.`weight`
