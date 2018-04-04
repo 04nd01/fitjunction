@@ -1,3 +1,4 @@
+var config = require('./config/config.js');
 var log = require('winston');
 log.configure({
   transports: [
@@ -17,7 +18,7 @@ log.configure({
       maxsize: 5242880, //5MB
       maxFiles: 5,
       json: false,
-      level: 'debug',
+      level: config.LOG_LEVEL,
       timestamp: function() {
         return moment().format('YYYY-MM-DD HH:mm:ss');
       },
@@ -33,7 +34,6 @@ log.configure({
 var fs = require('fs');
 var moment = require('moment');
 var cron = require('node-cron');
-var config = require('./config/config.js');
 var fitbitConnector = require('./fitbitconnector.js');
 var dataProcessor = require('./dataprocessor.js');
 var mysql = require('./mysql.js');
