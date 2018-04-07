@@ -141,7 +141,7 @@ function fitbitDataWriter(result) {
           if (currentEntry > completeness.body_fat.startTime)
           {
             rows.push('("' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + '", "' + fat[key]['fat'] + '")');
-            if (currentEntry > newestEntry) newestEntry = currentEntry;
+            if (currentEntry > newestEntry) newestEntry = moment(currentEntry);
           }
         });
         let allRows = rows.join(', ');
@@ -168,7 +168,7 @@ function fitbitDataWriter(result) {
           if (currentEntry > completeness.weight.startTime)
           {
             rows.push('("' + currentEntry.format('YYYY-MM-DD HH:mm:ss') + '", "' + weight[key]['weight'] + '", "' + weight[key]['bmi'] + '")');
-            if (currentEntry > newestEntry) newestEntry = currentEntry;
+            if (currentEntry > newestEntry) newestEntry = moment(currentEntry);
           }
         });
         let allRows = rows.join(', ');
@@ -269,6 +269,7 @@ function fitbitDataWriter(result) {
       if (Object.keys(sleep).length == 0) return updateCompleteness('sleep','false');
       else {
         let currentEntry;
+        let newestEntry = moment(completeness.sleep.startTime);
         let insertSleep = [];
         function sleepLog(key, connection) {
           let isMainSleep, startTime, endTime;
@@ -300,9 +301,10 @@ function fitbitDataWriter(result) {
           Object.keys(sleep).forEach(function(key) {
             currentEntry = moment(sleep[key]['startTime']).add(sleep[key]['timeInBed'], 'minutes'); // using endTime because the start time of the sleep will usually be the day before
             if (currentEntry > completeness.sleep.startTime) insertSleep.push(sleepLog(key, connection));
+            if (currentEntry > newestEntry) newestEntry = moment(currentEntry);
           });
           return Promise.all(insertSleep)
-          .then(() => updateCompleteness('sleep', currentEntry, connection))
+          .then(() => updateCompleteness('sleep', newestEntry, connection))
           .then(() => mysql.commit(connection))
           .catch((err) => mysql.rollback(connection, err));
         })
