@@ -144,6 +144,7 @@ function fitbitDataWriter(result) {
             if (currentEntry > newestEntry) newestEntry = moment(currentEntry);
           }
         });
+        if (Object.keys(rows).length == 0) return;
         let allRows = rows.join(', ');
         return mysql.startTransaction()
         .then(function(connection) {
@@ -171,6 +172,7 @@ function fitbitDataWriter(result) {
             if (currentEntry > newestEntry) newestEntry = moment(currentEntry);
           }
         });
+        if (Object.keys(rows).length == 0) return;
         let allRows = rows.join(', ');
         return mysql.startTransaction()
         .then(function(connection) {
