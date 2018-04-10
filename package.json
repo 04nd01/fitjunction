@@ -1,6 +1,6 @@
 {
   "name": "fitjunction",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "description": "Pulls activity data from fitbit and stores it in a MySQL database.",
   "main": "main.js",
   "dependencies": {
